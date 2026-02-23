@@ -237,7 +237,7 @@ function InfusionPanel({ orderedAdminDose, onChange }: { orderedAdminDose: strin
 
           <div className="absolute left-1/2 top-[48px] h-[286px] w-[100px] -translate-x-1/2 rounded-[3px] border-4 border-zinc-700 bg-zinc-50 shadow-inner">
             <div
-              className="absolute inset-x-0 bottom-0 rounded-b-[4px] bg-gradient-to-t from-yellow-400 to-yellow-200 transition-all duration-300"
+              className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-yellow-400 to-yellow-200 transition-all duration-300"
               style={{ height: `${filledPct}%` }}
             />
 
