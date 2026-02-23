@@ -167,17 +167,19 @@ const MEDS: Med[] = [
 
 function parseMl(dose: string) {
   const match = dose.match(/=\s*(\d+(?:\.\d+)?)\s*mL/i);
-  if (!match) return 1;
-  return Math.max(1, Math.round(Number(match[1])));
+  if (!match) return 3;
+  return Math.max(3, Math.round(Number(match[1])));
 }
 
 function InfusionPanel({ orderedAdminDose, onChange }: { orderedAdminDose: string; onChange: (r: InfusionResult) => void }) {
   const totalMl = parseMl(orderedAdminDose);
-  const [remainingMl, setRemainingMl] = useState(totalMl);
+  const STEP_ML = 0.1;
+  const totalUnits = Math.round(totalMl / STEP_ML);
+  const [remainingUnits, setRemainingUnits] = useState(totalUnits);
   const [firstPushAt, setFirstPushAt] = useState<number | null>(null);
   const [elapsedMs, setElapsedMs] = useState(0);
 
-  const complete = remainingMl === 0;
+  const complete = remainingUnits === 0;
 
   useEffect(() => {
     if (!firstPushAt || complete) return;
@@ -196,13 +198,13 @@ function InfusionPanel({ orderedAdminDose, onChange }: { orderedAdminDose: strin
   }, []);
 
   const pushOne = () => {
-    if (remainingMl <= 0) return;
+    if (remainingUnits <= 0) return;
 
     const start = firstPushAt ?? performance.now();
     if (!firstPushAt) setFirstPushAt(start);
 
-    const nextRemaining = Math.max(0, remainingMl - 1);
-    setRemainingMl(nextRemaining);
+    const nextRemaining = Math.max(0, remainingUnits - 1);
+    setRemainingUnits(nextRemaining);
 
     if (nextRemaining === 0) {
       const finalElapsedMs = performance.now() - start;
@@ -212,40 +214,40 @@ function InfusionPanel({ orderedAdminDose, onChange }: { orderedAdminDose: strin
   };
 
   const reset = () => {
-    setRemainingMl(totalMl);
+    setRemainingUnits(totalUnits);
     setFirstPushAt(null);
     setElapsedMs(0);
     onChange({ complete: false, elapsedSeconds: null });
   };
 
-  const filledPct = (remainingMl / totalMl) * 100;
+  const remainingMl = remainingUnits * STEP_ML;
+  const filledPct = (remainingUnits / totalUnits) * 100;
+  const majorStep = totalMl === 3 ? 0.5 : 1;
 
   return (
     <div className="space-y-4 rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
       <h3 className="text-base font-semibold text-zinc-900">Syringe Infusion Trainer</h3>
 
-      <div className="mx-auto flex h-80 w-[260px] items-end justify-center gap-4">
-        <div className="relative h-[290px] w-[108px] rounded-2xl border-4 border-zinc-300 bg-zinc-50 shadow-inner">
+      <div className="mx-auto flex h-[430px] w-[280px] items-end justify-center gap-4">
+        <div className="relative h-[340px] w-[108px] rounded-2xl border-4 border-zinc-300 bg-zinc-50 shadow-inner">
           <div
             className="absolute bottom-0 left-0 right-0 rounded-b-xl bg-gradient-to-t from-yellow-400 to-yellow-200 transition-all duration-300"
             style={{ height: `${filledPct}%` }}
           />
 
-          {Array.from({ length: totalMl + 1 }).map((_, i) => {
-            const y = (i / totalMl) * 100;
-            const label = totalMl - i;
+          {Array.from({ length: totalUnits + 1 }).map((_, i) => {
+            const y = (i / totalUnits) * 100;
+            const labelValue = totalMl - i * STEP_ML;
+            const isMajor = Math.abs((labelValue / majorStep) - Math.round(labelValue / majorStep)) < 1e-6;
+            const safeLabel = Number(labelValue.toFixed(1));
             return (
-              <div key={`major-${i}`} className="absolute left-0 right-0" style={{ top: `${y}%` }}>
-                <div className="ml-1 h-[2px] w-8 bg-zinc-700" />
-                <span className="absolute -left-8 -top-2 text-[10px] font-bold text-zinc-600">{label}</span>
+              <div key={`tick-${i}`} className="absolute left-0 right-0" style={{ top: `${y}%` }}>
+                <div className={`ml-1 ${isMajor ? "h-[2px] w-8 bg-zinc-700" : "h-[1px] w-4 bg-zinc-500/80"}`} />
+                {isMajor && (
+                  <span className="absolute -left-9 -top-2 text-[10px] font-bold text-zinc-600">{safeLabel}</span>
+                )}
               </div>
             );
-          })}
-
-          {Array.from({ length: totalMl * 5 + 1 }).map((_, i) => {
-            if (i % 5 === 0) return null;
-            const y = (i / (totalMl * 5)) * 100;
-            return <div key={`minor-${i}`} className="absolute left-0 ml-1 h-[1px] w-4 bg-zinc-500/80" style={{ top: `${y}%` }} />;
           })}
 
           <div className="absolute -bottom-11 left-1/2 h-11 w-4 -translate-x-1/2 rounded-b-md bg-zinc-400" />
@@ -293,7 +295,7 @@ function InfusionPanel({ orderedAdminDose, onChange }: { orderedAdminDose: strin
           disabled={complete}
           className="rounded-xl bg-blue-600 px-4 py-3 text-sm font-bold text-white hover:bg-blue-500 disabled:opacity-40"
         >
-          Push 1 mL
+          Push 0.1 mL
         </button>
         <button
           onClick={reset}
@@ -305,7 +307,7 @@ function InfusionPanel({ orderedAdminDose, onChange }: { orderedAdminDose: strin
 
       <div className="rounded-xl border border-zinc-200 p-3 text-sm">
         <p>
-          Remaining: <span className="font-bold">{remainingMl} mL</span> / {totalMl} mL
+          Remaining: <span className="font-bold">{remainingMl.toFixed(1)} mL</span> / {totalMl.toFixed(1)} mL
         </p>
       </div>
 
