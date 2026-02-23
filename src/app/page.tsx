@@ -19,6 +19,8 @@ type Med = {
 
 type Screen = "home" | "med" | "done";
 
+type InfusionResult = { complete: boolean; elapsedSeconds: number | null };
+
 const MEDS: Med[] = [
   {
     name: "ondansetron (Zofran) injection 4 mg IV every 8 hours PRN",
@@ -163,101 +165,136 @@ const MEDS: Med[] = [
   },
 ];
 
-function Stopwatch() {
-  const [running, setRunning] = useState(false);
+function parseMl(dose: string) {
+  const match = dose.match(/=\s*(\d+(?:\.\d+)?)\s*mL/i);
+  if (!match) return 1;
+  return Math.max(1, Math.round(Number(match[1])));
+}
+
+function InfusionPanel({ orderedAdminDose, onChange }: { orderedAdminDose: string; onChange: (r: InfusionResult) => void }) {
+  const totalMl = parseMl(orderedAdminDose);
+  const [remainingMl, setRemainingMl] = useState(totalMl);
+  const [firstPushAt, setFirstPushAt] = useState<number | null>(null);
   const [elapsedMs, setElapsedMs] = useState(0);
 
+  const complete = remainingMl === 0;
+
   useEffect(() => {
-    if (!running) return;
-    const startedAt = performance.now() - elapsedMs;
-    const id = setInterval(() => setElapsedMs(performance.now() - startedAt), 16);
+    if (!firstPushAt || complete) return;
+    const id = setInterval(() => setElapsedMs(performance.now() - firstPushAt), 50);
     return () => clearInterval(id);
-  }, [running, elapsedMs]);
+  }, [firstPushAt, complete]);
+
+  useEffect(() => {
+    onChange({ complete, elapsedSeconds: complete ? Number((elapsedMs / 1000).toFixed(2)) : null });
+  }, [complete, elapsedMs, onChange]);
 
   const totalSeconds = elapsedMs / 1000;
   const seconds = Math.floor(totalSeconds % 60);
   const minutes = Math.floor(totalSeconds / 60);
   const sweepDeg = (totalSeconds % 60) * 6;
 
-  return (
-    <div className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
-      <div className="mb-4 flex items-center justify-between">
-        <h3 className="text-base font-semibold text-zinc-900">Medication Stopwatch</h3>
-        <span className="rounded-full bg-zinc-100 px-3 py-1 text-xs font-semibold text-zinc-600">per medication</span>
-      </div>
+  const pushOne = () => {
+    if (remainingMl <= 0) return;
+    if (!firstPushAt) setFirstPushAt(performance.now());
+    setRemainingMl((v) => Math.max(0, v - 1));
+  };
 
-      <div className="mx-auto mb-4 grid h-60 w-60 place-items-center rounded-full border-[8px] border-zinc-200 bg-gradient-to-b from-white to-zinc-100 shadow-inner">
-        <div className="relative h-52 w-52 rounded-full border-2 border-zinc-300 bg-white">
-          {[...Array(12)].map((_, i) => {
-            const angle = i * 30 - 90;
-            const r = 88;
-            const x = 104 + r * Math.cos((angle * Math.PI) / 180);
-            const y = 104 + r * Math.sin((angle * Math.PI) / 180);
-            const label = i === 0 ? "60" : String(i * 5);
+  const reset = () => {
+    setRemainingMl(totalMl);
+    setFirstPushAt(null);
+    setElapsedMs(0);
+  };
+
+  const filledPct = (remainingMl / totalMl) * 100;
+
+  return (
+    <div className="space-y-4 rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
+      <h3 className="text-base font-semibold text-zinc-900">Syringe Infusion Trainer</h3>
+
+      <div className="mx-auto flex h-80 w-[240px] items-end justify-center gap-4">
+        <div className="relative h-[280px] w-[96px] rounded-2xl border-4 border-zinc-300 bg-zinc-50 shadow-inner">
+          <div
+            className="absolute bottom-0 left-0 right-0 rounded-b-xl bg-yellow-300 transition-all duration-300"
+            style={{ height: `${filledPct}%` }}
+          />
+
+          {Array.from({ length: totalMl + 1 }).map((_, i) => {
+            const top = `${(i / totalMl) * 100}%`;
+            const label = totalMl - i;
             return (
-              <span
-                key={i}
-                className="absolute -translate-x-1/2 -translate-y-1/2 text-xs font-bold text-zinc-500"
-                style={{ left: `${x}px`, top: `${y}px` }}
-              >
-                {label}
-              </span>
+              <div key={i} className="absolute left-0 right-0" style={{ top }}>
+                <div className="ml-1 h-[2px] w-5 bg-zinc-700" />
+                <span className="absolute -left-7 -top-2 text-[10px] font-bold text-zinc-600">{label}</span>
+              </div>
             );
           })}
 
-          <div
-            className="absolute left-1/2 top-1/2 h-[78px] w-[3px] -translate-x-1/2 rounded-full bg-gradient-to-t from-red-700 to-red-400"
-            style={{ transform: `translate(-50%, -100%) rotate(${sweepDeg}deg)`, transformOrigin: "50% 100%" }}
-          />
-          <div className="absolute left-1/2 top-1/2 h-4 w-4 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white bg-zinc-900" />
+          <div className="absolute -bottom-10 left-1/2 h-10 w-3 -translate-x-1/2 rounded-b-md bg-zinc-400" />
+          <div className="absolute -top-8 left-1/2 h-8 w-14 -translate-x-1/2 rounded-t-md border border-zinc-400 bg-zinc-100" />
+        </div>
+
+        <div className="grid h-[260px] place-items-center rounded-full border-[8px] border-zinc-200 bg-gradient-to-b from-white to-zinc-100 p-3 shadow-inner">
+          <div className="relative h-40 w-40 rounded-full border-2 border-zinc-300 bg-white">
+            {[...Array(12)].map((_, i) => {
+              const angle = i * 30 - 90;
+              const r = 64;
+              const x = 80 + r * Math.cos((angle * Math.PI) / 180);
+              const y = 80 + r * Math.sin((angle * Math.PI) / 180);
+              const label = i === 0 ? "60" : String(i * 5);
+              return (
+                <span
+                  key={i}
+                  className="absolute -translate-x-1/2 -translate-y-1/2 text-[10px] font-bold text-zinc-500"
+                  style={{ left: `${x}px`, top: `${y}px` }}
+                >
+                  {label}
+                </span>
+              );
+            })}
+            <div
+              className="absolute left-1/2 top-1/2 h-[58px] w-[3px] -translate-x-1/2 rounded-full bg-gradient-to-t from-red-700 to-red-400"
+              style={{ transform: `translate(-50%, -100%) rotate(${sweepDeg}deg)`, transformOrigin: "50% 100%" }}
+            />
+            <div className="absolute left-1/2 top-1/2 h-3 w-3 -translate-x-1/2 -translate-y-1/2 rounded-full border border-white bg-zinc-900" />
+          </div>
         </div>
       </div>
 
-      <div className="mb-4 text-center font-mono text-3xl font-bold tracking-wider text-zinc-900">
-        {String(minutes).padStart(2, "0")}:{String(seconds).padStart(2, "0")}
+      <div className="rounded-xl bg-zinc-50 p-3 text-center">
+        <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Time since first push</p>
+        <p className="font-mono text-3xl font-bold text-zinc-900">
+          {String(minutes).padStart(2, "0")}:{String(seconds).padStart(2, "0")}
+        </p>
       </div>
 
-      <div className="grid grid-cols-3 gap-2">
+      <div className="grid grid-cols-2 gap-2">
         <button
-          onClick={() => setRunning(true)}
-          className="rounded-xl bg-emerald-600 px-4 py-3 text-sm font-semibold text-white hover:bg-emerald-500"
+          onClick={pushOne}
+          disabled={complete}
+          className="rounded-xl bg-blue-600 px-4 py-3 text-sm font-bold text-white hover:bg-blue-500 disabled:opacity-40"
         >
-          Start
+          Push 1 mL
         </button>
         <button
-          onClick={() => setRunning(false)}
-          className="rounded-xl bg-amber-500 px-4 py-3 text-sm font-semibold text-white hover:bg-amber-400"
+          onClick={reset}
+          className="rounded-xl bg-zinc-700 px-4 py-3 text-sm font-bold text-white hover:bg-zinc-600"
         >
-          Pause
-        </button>
-        <button
-          onClick={() => {
-            setRunning(false);
-            setElapsedMs(0);
-          }}
-          className="rounded-xl bg-zinc-700 px-4 py-3 text-sm font-semibold text-white hover:bg-zinc-600"
-        >
-          Reset
+          Reset Dose
         </button>
       </div>
-    </div>
-  );
-}
 
-function IVPanel() {
-  return (
-    <div className="rounded-2xl border border-blue-100 bg-gradient-to-b from-blue-50 to-cyan-50 p-5 shadow-sm">
-      <h3 className="mb-3 text-base font-semibold text-zinc-900">IV Line Visual</h3>
-      <div className="relative mx-auto h-56 w-40">
-        <div className="absolute left-1/2 top-0 h-4 w-4 -translate-x-1/2 rounded-full bg-zinc-500" />
-        <div className="absolute left-1/2 top-4 h-16 w-[2px] -translate-x-1/2 bg-zinc-400" />
-        <div className="absolute left-1/2 top-20 h-24 w-20 -translate-x-1/2 rounded-2xl border border-blue-200 bg-white shadow-inner">
-          <div className="absolute bottom-0 left-0 right-0 h-14 rounded-b-2xl bg-blue-300/80" />
-          <div className="absolute left-1/2 top-1 h-5 w-8 -translate-x-1/2 rounded-md border border-zinc-300 bg-zinc-50" />
+      <div className="rounded-xl border border-zinc-200 p-3 text-sm">
+        <p>
+          Remaining: <span className="font-bold">{remainingMl} mL</span> / {totalMl} mL
+        </p>
+      </div>
+
+      {complete && (
+        <div className="animate-pulse rounded-xl border border-emerald-300 bg-emerald-50 p-3 text-sm font-semibold text-emerald-800">
+          Medication infused ✅ Total infusion time: {Number((elapsedMs / 1000).toFixed(2))} seconds
         </div>
-        <div className="absolute left-1/2 top-44 h-16 w-[2px] -translate-x-1/2 bg-zinc-400" />
-      </div>
-      <p className="mt-3 text-xs text-zinc-600">Reference visual to keep line context on-screen.</p>
+      )}
     </div>
   );
 }
@@ -266,9 +303,11 @@ export default function Home() {
   const [screen, setScreen] = useState<Screen>("home");
   const [index, setIndex] = useState(0);
   const [showRef, setShowRef] = useState(false);
+  const [infusionByMed, setInfusionByMed] = useState<Record<number, InfusionResult>>({});
 
   const med = MEDS[index];
   const progress = useMemo(() => `${index + 1} / ${MEDS.length}`, [index]);
+  const canAdvance = infusionByMed[index]?.complete ?? false;
 
   const toHome = () => {
     setShowRef(false);
@@ -280,9 +319,7 @@ export default function Home() {
     return (
       <main className="min-h-screen bg-gradient-to-b from-zinc-50 to-zinc-100 px-8 py-12 text-zinc-900">
         <div className="mx-auto max-w-5xl rounded-3xl border border-zinc-200 bg-white p-10 shadow-xl">
-          <p className="inline-flex rounded-full bg-blue-100 px-4 py-1 text-sm font-semibold text-blue-700">
-            Medication Rate Simulation
-          </p>
+          <p className="inline-flex rounded-full bg-blue-100 px-4 py-1 text-sm font-semibold text-blue-700">Medication Rate Simulation</p>
           <h1 className="mt-5 text-5xl font-black tracking-tight">IV Push Medication Training</h1>
           <p className="mt-4 max-w-3xl text-lg text-zinc-600">
             Infuse intravenous medications at a safe rate of administration. Use medication reference information as needed, then return and continue the simulation.
@@ -299,10 +336,7 @@ export default function Home() {
             </div>
           </div>
 
-          <button
-            onClick={() => setScreen("med")}
-            className="mt-10 rounded-2xl bg-blue-600 px-8 py-5 text-xl font-bold text-white shadow-lg transition hover:bg-blue-500"
-          >
+          <button onClick={() => setScreen("med")} className="mt-10 rounded-2xl bg-blue-600 px-8 py-5 text-xl font-bold text-white shadow-lg transition hover:bg-blue-500">
             Start Simulation
           </button>
         </div>
@@ -316,10 +350,7 @@ export default function Home() {
         <div className="w-full max-w-3xl rounded-3xl border border-emerald-200 bg-white p-10 text-center shadow-xl">
           <h1 className="text-4xl font-black text-zinc-900">Thank you for completing this simulation!</h1>
           <p className="mt-4 text-zinc-600">You reviewed all medication administration cards.</p>
-          <button
-            onClick={toHome}
-            className="mt-8 rounded-2xl bg-zinc-900 px-6 py-4 text-lg font-bold text-white hover:bg-zinc-700"
-          >
+          <button onClick={toHome} className="mt-8 rounded-2xl bg-zinc-900 px-6 py-4 text-lg font-bold text-white hover:bg-zinc-700">
             Back to Home
           </button>
         </div>
@@ -329,7 +360,7 @@ export default function Home() {
 
   return (
     <main className="min-h-screen bg-zinc-100 px-6 py-8 text-zinc-900">
-      <div className="mx-auto grid max-w-[1400px] gap-6 xl:grid-cols-[1fr_370px]">
+      <div className="mx-auto grid max-w-[1400px] gap-6 xl:grid-cols-[1fr_420px]">
         <section className="rounded-3xl border border-zinc-200 bg-white p-8 shadow-xl">
           <div className="mb-6 flex items-center justify-between">
             <h1 className="text-3xl font-black">IV Medication Card</h1>
@@ -359,19 +390,13 @@ export default function Home() {
           </div>
 
           <div className="mt-8 flex flex-wrap gap-3">
-            <button
-              onClick={() => setShowRef(true)}
-              className="rounded-2xl border border-emerald-300 bg-emerald-50 px-6 py-4 text-base font-bold text-emerald-800 hover:bg-emerald-100"
-            >
+            <button onClick={() => setShowRef(true)} className="rounded-2xl border border-emerald-300 bg-emerald-50 px-6 py-4 text-base font-bold text-emerald-800 hover:bg-emerald-100">
               Open Drug Reference
             </button>
             <button
               onClick={() => {
-                if (index === 0) {
-                  setScreen("home");
-                } else {
-                  setIndex((v) => v - 1);
-                }
+                if (index === 0) setScreen("home");
+                else setIndex((v) => v - 1);
                 setShowRef(false);
               }}
               className="rounded-2xl bg-zinc-800 px-6 py-4 text-base font-bold text-white hover:bg-zinc-700"
@@ -384,16 +409,21 @@ export default function Home() {
                 if (index === MEDS.length - 1) setScreen("done");
                 else setIndex((v) => v + 1);
               }}
-              className="rounded-2xl bg-blue-600 px-6 py-4 text-base font-bold text-white hover:bg-blue-500"
+              disabled={!canAdvance}
+              className="rounded-2xl bg-blue-600 px-6 py-4 text-base font-bold text-white hover:bg-blue-500 disabled:opacity-40"
             >
-              Next Push
+              Next Medication
             </button>
           </div>
+          {!canAdvance && <p className="mt-3 text-sm font-semibold text-amber-700">Complete syringe infusion to continue.</p>}
         </section>
 
-        <aside className="space-y-4">
-          <Stopwatch key={index} />
-          <IVPanel />
+        <aside>
+          <InfusionPanel
+            key={index}
+            orderedAdminDose={med.orderedAdminDose}
+            onChange={(result) => setInfusionByMed((prev) => ({ ...prev, [index]: result }))}
+          />
         </aside>
       </div>
 
@@ -403,10 +433,7 @@ export default function Home() {
             <p className="text-sm font-semibold uppercase tracking-wide text-emerald-700">Drug Reference</p>
             <h2 className="mt-2 text-2xl font-black text-zinc-900">{med.referenceTitle}</h2>
             <p className="mt-4 text-lg text-zinc-800">{med.referenceBody}</p>
-            <button
-              onClick={() => setShowRef(false)}
-              className="mt-6 rounded-2xl bg-zinc-900 px-6 py-3 text-base font-bold text-white hover:bg-zinc-700"
-            >
+            <button onClick={() => setShowRef(false)} className="mt-6 rounded-2xl bg-zinc-900 px-6 py-3 text-base font-bold text-white hover:bg-zinc-700">
               Close
             </button>
           </div>
