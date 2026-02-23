@@ -298,18 +298,19 @@ function InfusionPanel({ orderedAdminDose, onChange }: { orderedAdminDose: strin
 
         <div className="ml-3 grid h-[212px] w-[212px] shrink-0 place-items-center rounded-full border-[4px] border-zinc-200 bg-gradient-to-b from-white to-zinc-100 p-1 shadow-inner">
           <div className="relative h-40 w-40 rounded-full border-2 border-zinc-300 bg-white">
-            {Array.from({ length: 60 }).map((_, i) => {
-              const angle = i * 6 - 90;
-              const longTick = i % 5 === 0;
-              const outerR = 79;
-              const innerR = longTick ? 69 : 73;
-              const x1 = 80 + innerR * Math.cos((angle * Math.PI) / 180);
-              const y1 = 80 + innerR * Math.sin((angle * Math.PI) / 180);
-              const x2 = 80 + outerR * Math.cos((angle * Math.PI) / 180);
-              const y2 = 80 + outerR * Math.sin((angle * Math.PI) / 180);
-              return (
-                <svg key={`tick-${i}`} className="absolute inset-0 h-full w-full overflow-visible" aria-hidden>
+            <svg className="absolute inset-0 h-full w-full" viewBox="0 0 160 160" aria-hidden>
+              {Array.from({ length: 60 }).map((_, i) => {
+                const angle = i * 6 - 90;
+                const longTick = i % 5 === 0;
+                const outerR = 79;
+                const innerR = longTick ? 69 : 73;
+                const x1 = 80 + innerR * Math.cos((angle * Math.PI) / 180);
+                const y1 = 80 + innerR * Math.sin((angle * Math.PI) / 180);
+                const x2 = 80 + outerR * Math.cos((angle * Math.PI) / 180);
+                const y2 = 80 + outerR * Math.sin((angle * Math.PI) / 180);
+                return (
                   <line
+                    key={`tick-${i}`}
                     x1={x1}
                     y1={y1}
                     x2={x2}
@@ -318,9 +319,9 @@ function InfusionPanel({ orderedAdminDose, onChange }: { orderedAdminDose: strin
                     strokeWidth={longTick ? 1.8 : 1}
                     strokeLinecap="round"
                   />
-                </svg>
-              );
-            })}
+                );
+              })}
+            </svg>
 
             {[...Array(12)].map((_, i) => {
               const angle = i * 30 - 90;
