@@ -217,16 +217,22 @@ function InfusionPanel({ orderedAdminDose, onChange }: { orderedAdminDose: strin
   };
 
   const pushOne = () => {
-    const startedAt = firstPushRef.current ?? performance.now();
-    if (firstPushRef.current === null) {
-      firstPushRef.current = startedAt;
-      setFirstPushAt(startedAt);
-    }
+    let didPush = false;
 
     setRemainingUnits((prev) => {
       if (prev <= 0) return prev;
+
+      if (firstPushRef.current === null) {
+        const startedAt = performance.now();
+        firstPushRef.current = startedAt;
+        setFirstPushAt(startedAt);
+      }
+
+      didPush = true;
       return Math.max(0, prev - 1);
     });
+
+    return didPush;
   };
 
   const startHoldPush = () => {
@@ -235,9 +241,18 @@ function InfusionPanel({ orderedAdminDose, onChange }: { orderedAdminDose: strin
     holdStartTimeoutRef.current = setTimeout(() => {
       isHoldingRef.current = true;
       setFlowMode('hold');
-      pushOne();
+      const pushed = pushOne();
+      if (!pushed) {
+        clearHold();
+        setFlowMode('idle');
+        return;
+      }
       holdIntervalRef.current = setInterval(() => {
-        pushOne();
+        const didPush = pushOne();
+        if (!didPush) {
+          clearHold();
+          setFlowMode('idle');
+        }
       }, 220);
       holdStartTimeoutRef.current = null;
     }, 180);
@@ -255,8 +270,8 @@ function InfusionPanel({ orderedAdminDose, onChange }: { orderedAdminDose: strin
       holdStartTimeoutRef.current = null;
     }
 
-    pushOne();
-    pulseFlow();
+    const pushed = pushOne();
+    if (pushed) pulseFlow();
   };
 
   useEffect(() => {
