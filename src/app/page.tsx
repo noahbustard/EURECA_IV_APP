@@ -228,7 +228,7 @@ function InfusionPanel({ orderedAdminDose, onChange }: { orderedAdminDose: strin
     <div className="space-y-4 rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
       <h3 className="text-base font-semibold text-zinc-900">Syringe Infusion Trainer</h3>
 
-      <div className="mx-auto flex h-[510px] w-[320px] items-start justify-center gap-3 pt-2">
+      <div className="mx-auto flex h-[510px] w-[360px] items-start justify-center gap-6 pt-2">
         <div className="relative h-[390px] w-[120px]">
           <div className="absolute left-1/2 top-[39px] h-[2px] w-[80px] -translate-x-1/2 bg-zinc-500" />
           <div className="absolute left-1/2 top-[34px] h-14 w-[50px] -translate-x-1/2 border border-zinc-400 bg-zinc-100 shadow-sm" />
@@ -248,7 +248,7 @@ function InfusionPanel({ orderedAdminDose, onChange }: { orderedAdminDose: strin
                 <div key={`tick-${i}`} className="absolute left-0 right-0" style={{ top: `${y}%` }}>
                   <div className={`ml-1 ${isMajor ? "h-[2px] w-8 bg-zinc-700" : "h-[1px] w-4 bg-zinc-500/80"}`} />
                   {isMajor && (
-                    <span className="absolute left-[2px] -top-2 text-[10px] font-bold text-zinc-600">
+                    <span className="absolute left-10 -top-2 text-[10px] font-bold text-zinc-600">
                       {safeLabel === totalMl ? `${safeLabel}mL` : safeLabel}
                     </span>
                   )}
@@ -259,7 +259,7 @@ function InfusionPanel({ orderedAdminDose, onChange }: { orderedAdminDose: strin
 
         </div>
 
-        <div className="-ml-2 grid h-[250px] w-[250px] place-items-center rounded-full border-[8px] border-zinc-200 bg-gradient-to-b from-white to-zinc-100 p-3 shadow-inner">
+        <div className="ml-3 grid h-[250px] w-[250px] place-items-center rounded-full border-[8px] border-zinc-200 bg-gradient-to-b from-white to-zinc-100 p-3 shadow-inner">
           <div className="relative h-40 w-40 rounded-full border-2 border-zinc-300 bg-white">
             {[...Array(12)].map((_, i) => {
               const angle = i * 30 - 90;
