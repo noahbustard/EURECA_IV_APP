@@ -189,6 +189,7 @@ function InfusionPanel({ orderedAdminDose, onChange }: { orderedAdminDose: strin
   const holdIntervalRef = useMemo<{ current: ReturnType<typeof setInterval> | null }>(() => ({ current: null }), []);
   const holdStartTimeoutRef = useMemo<{ current: ReturnType<typeof setTimeout> | null }>(() => ({ current: null }), []);
   const isHoldingRef = useMemo<{ current: boolean }>(() => ({ current: false }), []);
+  const firstPushRef = useMemo<{ current: number | null }>(() => ({ current: null }), []);
 
   const complete = remainingUnits === 0;
 
@@ -216,12 +217,16 @@ function InfusionPanel({ orderedAdminDose, onChange }: { orderedAdminDose: strin
   };
 
   const pushOne = () => {
+    const startedAt = firstPushRef.current ?? performance.now();
+    if (firstPushRef.current === null) {
+      firstPushRef.current = startedAt;
+      setFirstPushAt(startedAt);
+    }
+
     setRemainingUnits((prev) => {
       if (prev <= 0) return prev;
       return Math.max(0, prev - 1);
     });
-
-    if (!firstPushAt) setFirstPushAt(performance.now());
   };
 
   const startHoldPush = () => {
@@ -274,6 +279,7 @@ function InfusionPanel({ orderedAdminDose, onChange }: { orderedAdminDose: strin
 
   const reset = () => {
     clearHold();
+    firstPushRef.current = null;
     setRemainingUnits(totalUnits);
     setFirstPushAt(null);
     setElapsedMs(0);
@@ -288,6 +294,7 @@ function InfusionPanel({ orderedAdminDose, onChange }: { orderedAdminDose: strin
 
   const remainingMl = remainingUnits * STEP_ML;
   const majorStep = vialMl === 3 ? 0.5 : 1;
+  const scaleStep = vialMl === 10 ? 0.2 : 0.1;
   const activeStartPct = 100 / 6;
   const activeHeightPct = 100 - activeStartPct;
   const filledPct = (remainingMl / vialMl) * activeHeightPct;
@@ -307,10 +314,10 @@ function InfusionPanel({ orderedAdminDose, onChange }: { orderedAdminDose: strin
               style={{ height: `${filledPct}%` }}
             />
 
-            {Array.from({ length: Math.round(vialMl / STEP_ML) + 1 }).map((_, i) => {
-              const vialUnits = Math.round(vialMl / STEP_ML);
+            {Array.from({ length: Math.round(vialMl / scaleStep) + 1 }).map((_, i) => {
+              const vialUnits = Math.round(vialMl / scaleStep);
               const y = activeStartPct + (i / vialUnits) * activeHeightPct;
-              const labelValue = vialMl - i * STEP_ML;
+              const labelValue = vialMl - i * scaleStep;
               const isZero = Math.abs(labelValue) < 1e-6;
               if (isZero) return null;
               const isMajor = Math.abs(labelValue / majorStep - Math.round(labelValue / majorStep)) < 1e-6;
