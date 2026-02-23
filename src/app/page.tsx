@@ -323,22 +323,29 @@ function InfusionPanel({ orderedAdminDose, onChange }: { orderedAdminDose: strin
               })}
             </svg>
 
-            {[...Array(12)].map((_, i) => {
-              const angle = i * 30 - 90;
-              const r = 64;
-              const xBase = 80 + r * Math.cos((angle * Math.PI) / 180);
-              const y = 80 + r * Math.sin((angle * Math.PI) / 180);
-              const label = i === 0 ? '60' : String(i * 5);
-              return (
-                <span
-                  key={i}
-                  className="absolute -translate-x-1/2 -translate-y-1/2 text-[10px] font-bold text-zinc-500"
-                  style={{ left: `${xBase}px`, top: `${y}px` }}
-                >
-                  {label}
-                </span>
-              );
-            })}
+            <svg className="absolute inset-0 h-full w-full" viewBox="0 0 160 160" aria-hidden>
+              {[...Array(12)].map((_, i) => {
+                const angle = i * 30 - 90;
+                const r = 57;
+                const x = 80 + r * Math.cos((angle * Math.PI) / 180);
+                const y = 80 + r * Math.sin((angle * Math.PI) / 180);
+                const label = i === 0 ? '60' : String(i * 5);
+                return (
+                  <text
+                    key={i}
+                    x={x}
+                    y={y}
+                    textAnchor="middle"
+                    dominantBaseline="central"
+                    fontSize="10"
+                    fontWeight="700"
+                    fill="rgb(113 113 122)"
+                  >
+                    {label}
+                  </text>
+                );
+              })}
+            </svg>
             <div
               className="absolute h-[58px] w-[2px] rounded-full bg-gradient-to-t from-red-700 to-red-400"
               style={{ left: '50%', bottom: '50%', transform: `translateX(-50%) rotate(${sweepDeg}deg)`, transformOrigin: '50% 100%' }}
