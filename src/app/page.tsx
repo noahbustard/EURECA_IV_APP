@@ -296,16 +296,29 @@ function InfusionPanel({ orderedAdminDose, onChange }: { orderedAdminDose: strin
           />
         </div>
 
-        <div className="ml-3 grid h-[250px] w-[250px] shrink-0 place-items-center rounded-full border-[8px] border-zinc-200 bg-gradient-to-b from-white to-zinc-100 p-3 shadow-inner">
+        <div className="ml-3 grid h-[224px] w-[224px] shrink-0 place-items-center rounded-full border-[6px] border-zinc-200 bg-gradient-to-b from-white to-zinc-100 p-2 shadow-inner">
           <div className="relative h-40 w-40 rounded-full border-2 border-zinc-300 bg-white">
             {Array.from({ length: 60 }).map((_, i) => {
+              const angle = i * 6 - 90;
               const longTick = i % 5 === 0;
+              const outerR = 74;
+              const innerR = longTick ? 64 : 68;
+              const x1 = 80 + innerR * Math.cos((angle * Math.PI) / 180);
+              const y1 = 80 + innerR * Math.sin((angle * Math.PI) / 180);
+              const x2 = 80 + outerR * Math.cos((angle * Math.PI) / 180);
+              const y2 = 80 + outerR * Math.sin((angle * Math.PI) / 180);
               return (
-                <div
-                  key={`tick-${i}`}
-                  className={`absolute left-1/2 top-1/2 origin-bottom -translate-x-1/2 ${longTick ? 'h-3 w-[2px] bg-zinc-500' : 'h-2 w-[1px] bg-zinc-400'}`}
-                  style={{ transform: `translateX(-50%) translateY(-78px) rotate(${i * 6}deg)` }}
-                />
+                <svg key={`tick-${i}`} className="absolute inset-0 h-full w-full overflow-visible" aria-hidden>
+                  <line
+                    x1={x1}
+                    y1={y1}
+                    x2={x2}
+                    y2={y2}
+                    stroke={longTick ? 'rgb(82 82 91)' : 'rgb(161 161 170)'}
+                    strokeWidth={longTick ? 1.8 : 1}
+                    strokeLinecap="round"
+                  />
+                </svg>
               );
             })}
 
