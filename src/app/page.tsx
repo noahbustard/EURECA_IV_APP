@@ -167,14 +167,21 @@ const MEDS: Med[] = [
 
 function parseMl(dose: string) {
   const match = dose.match(/=\s*(\d+(?:\.\d+)?)\s*mL/i);
-  if (!match) return 3;
+  if (!match) return 1;
   return Math.max(1, Math.round(Number(match[1])));
 }
 
+function vialSizeForDose(doseMl: number) {
+  if (doseMl <= 2) return 3;
+  if (doseMl <= 4) return 5;
+  return 10;
+}
+
 function InfusionPanel({ orderedAdminDose, onChange }: { orderedAdminDose: string; onChange: (r: InfusionResult) => void }) {
-  const totalMl = parseMl(orderedAdminDose);
+  const doseMl = parseMl(orderedAdminDose);
+  const vialMl = vialSizeForDose(doseMl);
   const STEP_ML = 0.1;
-  const totalUnits = Math.round(totalMl / STEP_ML);
+  const totalUnits = Math.round(doseMl / STEP_ML);
   const [remainingUnits, setRemainingUnits] = useState(totalUnits);
   const [firstPushAt, setFirstPushAt] = useState<number | null>(null);
   const [elapsedMs, setElapsedMs] = useState(0);
@@ -280,10 +287,10 @@ function InfusionPanel({ orderedAdminDose, onChange }: { orderedAdminDose: strin
   const sweepDeg = (totalSeconds % 60) * 6;
 
   const remainingMl = remainingUnits * STEP_ML;
-  const majorStep = totalMl === 3 ? 0.5 : 1;
+  const majorStep = vialMl === 3 ? 0.5 : 1;
   const activeStartPct = 100 / 6;
   const activeHeightPct = 100 - activeStartPct;
-  const filledPct = (remainingUnits / totalUnits) * activeHeightPct;
+  const filledPct = (remainingMl / vialMl) * activeHeightPct;
 
   return (
     <div className="space-y-4 rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
@@ -300,9 +307,10 @@ function InfusionPanel({ orderedAdminDose, onChange }: { orderedAdminDose: strin
               style={{ height: `${filledPct}%` }}
             />
 
-            {Array.from({ length: totalUnits + 1 }).map((_, i) => {
-              const y = activeStartPct + (i / totalUnits) * activeHeightPct;
-              const labelValue = totalMl - i * STEP_ML;
+            {Array.from({ length: Math.round(vialMl / STEP_ML) + 1 }).map((_, i) => {
+              const vialUnits = Math.round(vialMl / STEP_ML);
+              const y = activeStartPct + (i / vialUnits) * activeHeightPct;
+              const labelValue = vialMl - i * STEP_ML;
               const isZero = Math.abs(labelValue) < 1e-6;
               if (isZero) return null;
               const isMajor = Math.abs(labelValue / majorStep - Math.round(labelValue / majorStep)) < 1e-6;
@@ -312,7 +320,7 @@ function InfusionPanel({ orderedAdminDose, onChange }: { orderedAdminDose: strin
                   <div className={`ml-1 ${isMajor ? 'h-[2px] w-8 bg-zinc-700' : 'h-[1px] w-4 bg-zinc-500/80'}`} />
                   {isMajor && (
                     <span className="absolute left-10 -top-[6px] text-[9px] font-bold leading-none text-zinc-600">
-                      {safeLabel === totalMl ? `${safeLabel}mL` : safeLabel}
+                      {safeLabel === vialMl ? `${safeLabel}mL` : safeLabel}
                     </span>
                   )}
                 </div>
@@ -434,7 +442,7 @@ function InfusionPanel({ orderedAdminDose, onChange }: { orderedAdminDose: strin
 
       <div className="rounded-xl border border-zinc-200 p-3 text-sm">
         <p>
-          Remaining: <span className="font-bold">{remainingMl.toFixed(1)} mL</span> / {totalMl.toFixed(1)} mL
+          Remaining: <span className="font-bold">{remainingMl.toFixed(1)} mL</span> / {doseMl.toFixed(1)} mL
         </p>
       </div>
 
