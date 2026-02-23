@@ -296,20 +296,30 @@ function InfusionPanel({ orderedAdminDose, onChange }: { orderedAdminDose: strin
           />
         </div>
 
-        <div className="ml-3 grid h-[250px] w-[250px] place-items-center rounded-full border-[8px] border-zinc-200 bg-gradient-to-b from-white to-zinc-100 p-3 shadow-inner">
+        <div className="ml-3 grid h-[250px] w-[250px] shrink-0 place-items-center rounded-full border-[8px] border-zinc-200 bg-gradient-to-b from-white to-zinc-100 p-3 shadow-inner">
           <div className="relative h-40 w-40 rounded-full border-2 border-zinc-300 bg-white">
+            {Array.from({ length: 60 }).map((_, i) => {
+              const longTick = i % 5 === 0;
+              return (
+                <div
+                  key={`tick-${i}`}
+                  className={`absolute left-1/2 top-1/2 origin-bottom -translate-x-1/2 ${longTick ? 'h-3 w-[2px] bg-zinc-500' : 'h-2 w-[1px] bg-zinc-400'}`}
+                  style={{ transform: `translateX(-50%) translateY(-78px) rotate(${i * 6}deg)` }}
+                />
+              );
+            })}
+
             {[...Array(12)].map((_, i) => {
               const angle = i * 30 - 90;
               const r = 64;
               const xBase = 80 + r * Math.cos((angle * Math.PI) / 180);
               const y = 80 + r * Math.sin((angle * Math.PI) / 180);
               const label = i === 0 ? '60' : String(i * 5);
-              const x = xBase;
               return (
                 <span
                   key={i}
                   className="absolute -translate-x-1/2 -translate-y-1/2 text-[10px] font-bold text-zinc-500"
-                  style={{ left: `${x}px`, top: `${y}px` }}
+                  style={{ left: `${xBase}px`, top: `${y}px` }}
                 >
                   {label}
                 </span>
