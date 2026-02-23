@@ -231,7 +231,7 @@ function InfusionPanel({ orderedAdminDose, onChange }: { orderedAdminDose: strin
       <h3 className="text-base font-semibold text-zinc-900">Syringe Infusion Trainer</h3>
 
       <div className="mx-auto flex h-[510px] w-[360px] items-start justify-center gap-6 pt-2">
-        <div className="relative h-[390px] w-[120px]">
+        <div className="relative h-[458px] w-[120px]">
           <div className="absolute left-1/2 top-[34px] h-[2px] w-[80px] -translate-x-1/2 bg-zinc-700" />
           <div className="absolute left-1/2 top-[35px] h-14 w-[50px] -translate-x-1/2 border border-zinc-700 bg-zinc-100 shadow-sm" />
 
@@ -261,10 +261,16 @@ function InfusionPanel({ orderedAdminDose, onChange }: { orderedAdminDose: strin
             })}
           </div>
 
-          <div className="absolute left-[2px] top-[332px] h-11 w-[4px] origin-top -rotate-[62deg] bg-zinc-700" />
-          <div className="absolute right-[2px] top-[332px] h-11 w-[4px] origin-top rotate-[62deg] bg-zinc-700" />
-          <div className="absolute left-[53px] top-[352px] h-9 w-[1px] bg-zinc-700" />
-          <div className="absolute left-[65px] top-[352px] h-9 w-[1px] bg-zinc-700" />
+          <div className="absolute left-[3px] top-[332px] h-10 w-[4px] origin-top -rotate-[58deg] bg-zinc-700" />
+          <div className="absolute right-[3px] top-[332px] h-10 w-[4px] origin-top rotate-[58deg] bg-zinc-700" />
+
+          <div className="absolute left-[56px] top-[361px] h-7 w-[2px] bg-zinc-700" />
+          <div className="absolute left-[62px] top-[361px] h-7 w-[2px] bg-zinc-700" />
+
+          <div className="absolute left-[50px] top-[386px] h-[2px] w-[16px] bg-zinc-700" />
+          <div className="absolute left-[50px] top-[386px] h-14 w-[2px] bg-zinc-700" />
+          <div className="absolute left-[64px] top-[386px] h-14 w-[2px] bg-zinc-700" />
+          <div className="absolute left-[50px] top-[440px] h-[2px] w-[16px] bg-zinc-700" />
         </div>
 
         <div className="ml-3 grid h-[250px] w-[250px] place-items-center rounded-full border-[8px] border-zinc-200 bg-gradient-to-b from-white to-zinc-100 p-3 shadow-inner">
