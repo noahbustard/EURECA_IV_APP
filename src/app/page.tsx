@@ -331,9 +331,9 @@ function InfusionPanel({ orderedAdminDose, onChange }: { orderedAdminDose: strin
             />
           </svg>
 
-          <div className="absolute left-1/2 top-[390px] h-8 w-[2px] -translate-x-[200%] bg-zinc-700" />
+          <div className="absolute left-1/2 top-[390px] h-8 w-[2px] -translate-x-[130%] bg-zinc-700" />
           <div
-            className="absolute left-1/2 top-[390px] h-8 w-[2px] -translate-x-[200%] bg-yellow-300"
+            className="absolute left-1/2 top-[390px] h-8 w-[2px] -translate-x-[130%] bg-yellow-300"
             style={{
               opacity: flowMode === 'idle' ? 0 : 1,
               transform: flowMode === 'idle' ? 'translateY(0px)' : 'translateY(10px)',
