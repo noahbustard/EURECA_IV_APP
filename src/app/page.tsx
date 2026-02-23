@@ -231,7 +231,7 @@ function InfusionPanel({ orderedAdminDose, onChange }: { orderedAdminDose: strin
       <div className="mx-auto flex h-[510px] w-[360px] items-start justify-center gap-6 pt-2">
         <div className="relative h-[390px] w-[120px]">
           <div className="absolute left-1/2 top-[34px] h-[2px] w-[80px] -translate-x-1/2 bg-zinc-700" />
-          <div className="absolute left-1/2 top-[36px] h-14 w-[50px] -translate-x-1/2 border border-zinc-700 bg-zinc-100 shadow-sm" />
+          <div className="absolute left-1/2 top-[35px] h-14 w-[50px] -translate-x-1/2 border border-zinc-700 bg-zinc-100 shadow-sm" />
 
           <div className="absolute left-1/2 top-[48px] h-[286px] w-[100px] -translate-x-1/2 rounded-[8px] border-4 border-zinc-700 bg-zinc-50 shadow-inner">
             <div className="absolute inset-x-0 bottom-0 h-[83.333%] overflow-hidden rounded-b-[4px]">
