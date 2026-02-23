@@ -199,7 +199,7 @@ function InfusionPanel({ orderedAdminDose, onChange }: { orderedAdminDose: strin
   const pulseFlow = () => {
     setFlowOn(false);
     setTimeout(() => setFlowOn(true), 0);
-    setTimeout(() => setFlowOn(false), 280);
+    setTimeout(() => setFlowOn(false), 520);
   };
 
   const pushOne = (continuous = false) => {
@@ -315,18 +315,18 @@ function InfusionPanel({ orderedAdminDose, onChange }: { orderedAdminDose: strin
             />
           </svg>
 
-          <div className="absolute left-1/2 top-[401px] h-8 w-[2px] -translate-x-1/2 bg-zinc-700" />
+          <div className="absolute left-1/2 top-[397px] h-8 w-[2px] -translate-x-1/2 bg-zinc-700" />
           <div
-            className="absolute left-1/2 top-[401px] h-8 w-[2px] -translate-x-1/2 bg-yellow-300"
+            className="absolute left-1/2 top-[397px] h-8 w-[2px] -translate-x-1/2 bg-yellow-300"
             style={{
               opacity: flowOn ? 1 : 0,
               transform: flowOn ? 'translateY(10px)' : 'translateY(0px)',
-              transition: 'transform 260ms ease-out, opacity 260ms ease-out',
+              transition: 'transform 500ms ease-out, opacity 500ms ease-out',
             }}
           />
           <div
-            className="absolute left-1/2 top-[431px] h-[4px] w-[4px] -translate-x-1/2 rounded-full bg-yellow-300"
-            style={{ opacity: flowOn ? 1 : 0, transition: 'opacity 220ms ease-out' }}
+            className="absolute left-1/2 top-[427px] h-[4px] w-[4px] -translate-x-1/2 rounded-full bg-yellow-300"
+            style={{ opacity: flowOn ? 1 : 0, transition: 'opacity 420ms ease-out' }}
           />
         </div>
 
