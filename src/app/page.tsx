@@ -178,8 +178,10 @@ function InfusionPanel({ orderedAdminDose, onChange }: { orderedAdminDose: strin
   const [remainingUnits, setRemainingUnits] = useState(totalUnits);
   const [firstPushAt, setFirstPushAt] = useState<number | null>(null);
   const [elapsedMs, setElapsedMs] = useState(0);
-  const [flowOn, setFlowOn] = useState(false);
+  const [flowMode, setFlowMode] = useState<'idle' | 'click' | 'hold'>('idle');
   const holdIntervalRef = useMemo<{ current: ReturnType<typeof setInterval> | null }>(() => ({ current: null }), []);
+  const holdStartTimeoutRef = useMemo<{ current: ReturnType<typeof setTimeout> | null }>(() => ({ current: null }), []);
+  const isHoldingRef = useMemo<{ current: boolean }>(() => ({ current: false }), []);
 
   const complete = remainingUnits === 0;
 
@@ -194,21 +196,19 @@ function InfusionPanel({ orderedAdminDose, onChange }: { orderedAdminDose: strin
       clearInterval(holdIntervalRef.current);
       holdIntervalRef.current = null;
     }
+    if (holdStartTimeoutRef.current) {
+      clearTimeout(holdStartTimeoutRef.current);
+      holdStartTimeoutRef.current = null;
+    }
+    isHoldingRef.current = false;
   };
 
   const pulseFlow = () => {
-    setFlowOn(false);
-    setTimeout(() => setFlowOn(true), 0);
-    setTimeout(() => setFlowOn(false), 520);
+    setFlowMode('click');
+    setTimeout(() => setFlowMode('idle'), 420);
   };
 
-  const pushOne = (continuous = false) => {
-    if (continuous) {
-      setFlowOn(true);
-    } else {
-      pulseFlow();
-    }
-
+  const pushOne = () => {
     setRemainingUnits((prev) => {
       if (prev <= 0) return prev;
       return Math.max(0, prev - 1);
@@ -218,17 +218,33 @@ function InfusionPanel({ orderedAdminDose, onChange }: { orderedAdminDose: strin
   };
 
   const startHoldPush = () => {
-    if (complete || holdIntervalRef.current) return;
-    setFlowOn(true);
-    pushOne(true);
-    holdIntervalRef.current = setInterval(() => {
-      pushOne(true);
-    }, 140);
+    if (complete || holdIntervalRef.current || holdStartTimeoutRef.current) return;
+
+    holdStartTimeoutRef.current = setTimeout(() => {
+      isHoldingRef.current = true;
+      setFlowMode('hold');
+      pushOne();
+      holdIntervalRef.current = setInterval(() => {
+        pushOne();
+      }, 220);
+      holdStartTimeoutRef.current = null;
+    }, 180);
   };
 
   const stopHoldPush = () => {
-    clearHold();
-    setFlowOn(false);
+    if (isHoldingRef.current) {
+      clearHold();
+      setFlowMode('idle');
+      return;
+    }
+
+    if (holdStartTimeoutRef.current) {
+      clearTimeout(holdStartTimeoutRef.current);
+      holdStartTimeoutRef.current = null;
+    }
+
+    pushOne();
+    pulseFlow();
   };
 
   useEffect(() => {
@@ -241,7 +257,7 @@ function InfusionPanel({ orderedAdminDose, onChange }: { orderedAdminDose: strin
     const finalElapsedMs = performance.now() - firstPushAt;
     setElapsedMs(finalElapsedMs);
     clearHold();
-    setFlowOn(false);
+    setFlowMode('idle');
     onChange({ complete: true, elapsedSeconds: Number((finalElapsedMs / 1000).toFixed(2)) });
   }, [remainingUnits, firstPushAt, onChange]);
 
@@ -254,7 +270,7 @@ function InfusionPanel({ orderedAdminDose, onChange }: { orderedAdminDose: strin
     setRemainingUnits(totalUnits);
     setFirstPushAt(null);
     setElapsedMs(0);
-    setFlowOn(false);
+    setFlowMode('idle');
     onChange({ complete: false, elapsedSeconds: null });
   };
 
@@ -315,18 +331,18 @@ function InfusionPanel({ orderedAdminDose, onChange }: { orderedAdminDose: strin
             />
           </svg>
 
-          <div className="absolute left-1/2 top-[397px] h-8 w-[2px] -translate-x-1/2 bg-zinc-700" />
+          <div className="absolute left-1/2 top-[393px] h-8 w-[2px] -translate-x-1/2 bg-zinc-700" />
           <div
-            className="absolute left-1/2 top-[397px] h-8 w-[2px] -translate-x-1/2 bg-yellow-300"
+            className="absolute left-1/2 top-[393px] h-8 w-[2px] -translate-x-1/2 bg-yellow-300"
             style={{
-              opacity: flowOn ? 1 : 0,
-              transform: flowOn ? 'translateY(10px)' : 'translateY(0px)',
-              transition: 'transform 500ms ease-out, opacity 500ms ease-out',
+              opacity: flowMode === 'idle' ? 0 : 1,
+              transform: flowMode === 'idle' ? 'translateY(0px)' : 'translateY(10px)',
+              transition: flowMode === 'click' ? 'transform 420ms ease-out, opacity 420ms ease-out' : 'transform 220ms linear, opacity 220ms linear',
             }}
           />
           <div
-            className="absolute left-1/2 top-[427px] h-[4px] w-[4px] -translate-x-1/2 rounded-full bg-yellow-300"
-            style={{ opacity: flowOn ? 1 : 0, transition: 'opacity 420ms ease-out' }}
+            className="absolute left-1/2 top-[423px] h-[4px] w-[4px] -translate-x-1/2 rounded-full bg-yellow-300"
+            style={{ opacity: flowMode === 'idle' ? 0 : 1, transition: flowMode === 'click' ? 'opacity 420ms ease-out' : 'opacity 220ms linear' }}
           />
         </div>
 
