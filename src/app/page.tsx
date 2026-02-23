@@ -228,15 +228,14 @@ function InfusionPanel({ orderedAdminDose, onChange }: { orderedAdminDose: strin
     <div className="space-y-4 rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
       <h3 className="text-base font-semibold text-zinc-900">Syringe Infusion Trainer</h3>
 
-      <div className="mx-auto flex h-[510px] w-[300px] items-end justify-center gap-4">
+      <div className="mx-auto flex h-[510px] w-[300px] items-start justify-center gap-4 pt-2">
         <div className="relative h-[390px] w-[120px]">
-          <div className="absolute left-1/2 top-0 h-[2px] w-[114px] -translate-x-1/2 bg-zinc-500" />
-          <div className="absolute left-1/2 top-[2px] h-4 w-9 -translate-x-1/2 rounded-full border border-zinc-400 bg-zinc-100 shadow-sm" />
-          <div className="absolute left-1/2 top-[16px] h-10 w-[3px] -translate-x-1/2 rounded bg-zinc-400" />
+          <div className="absolute left-1/2 top-0 h-[2px] w-[80px] -translate-x-1/2 bg-zinc-500" />
+          <div className="absolute left-1/2 top-[2px] h-7 w-[50px] -translate-x-1/2 rounded-sm border border-zinc-400 bg-zinc-100 shadow-sm" />
 
-          <div className="absolute left-1/2 top-[52px] h-[286px] w-[100px] -translate-x-1/2 rounded-[22px] border-4 border-zinc-300 bg-zinc-50 shadow-inner">
+          <div className="absolute left-1/2 top-[48px] h-[286px] w-[100px] -translate-x-1/2 rounded-[8px] border-4 border-zinc-300 bg-zinc-50 shadow-inner">
             <div
-              className="absolute bottom-0 left-0 right-0 rounded-b-[18px] bg-gradient-to-t from-yellow-400 to-yellow-200 transition-all duration-300"
+              className="absolute bottom-0 left-0 right-0 rounded-b-[4px] bg-gradient-to-t from-yellow-400 to-yellow-200 transition-all duration-300"
               style={{ height: `${filledPct}%` }}
             />
 
@@ -256,10 +255,9 @@ function InfusionPanel({ orderedAdminDose, onChange }: { orderedAdminDose: strin
             })}
           </div>
 
-          <div className="absolute left-1/2 top-[338px] h-3 w-10 -translate-x-1/2 rounded-b-md border border-zinc-400 bg-zinc-100" />
-          <div className="absolute left-1/2 top-[349px] h-8 w-[3px] -translate-x-1/2 rounded bg-zinc-400" />
-          <div className="absolute left-1/2 top-[376px] h-12 w-[2px] -translate-x-1/2 bg-zinc-500" />
-          <div className="absolute left-1/2 top-[386px] h-1.5 w-3 -translate-x-1/2 rounded-full bg-zinc-500" />
+          <div className="absolute left-1/2 top-[334px] h-3 w-10 -translate-x-1/2 rounded-sm border border-zinc-400 bg-zinc-100" />
+          <div className="absolute left-1/2 top-[345px] h-6 w-1.5 -translate-x-1/2 rounded-sm bg-zinc-500" />
+          <div className="absolute left-1/2 top-[368px] h-8 w-1.5 -translate-x-1/2 rounded-sm bg-zinc-600" />
 
           <div className="absolute -right-8 top-[206px] rounded-lg bg-zinc-900 px-2 py-1 text-[10px] font-bold text-white">mL</div>
         </div>
