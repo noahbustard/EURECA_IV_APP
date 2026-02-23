@@ -168,7 +168,7 @@ const MEDS: Med[] = [
 function parseMl(dose: string) {
   const match = dose.match(/=\s*(\d+(?:\.\d+)?)\s*mL/i);
   if (!match) return 3;
-  return Math.max(3, Math.round(Number(match[1])));
+  return Math.max(1, Math.round(Number(match[1])));
 }
 
 function InfusionPanel({ orderedAdminDose, onChange }: { orderedAdminDose: string; onChange: (r: InfusionResult) => void }) {
@@ -189,25 +189,6 @@ function InfusionPanel({ orderedAdminDose, onChange }: { orderedAdminDose: strin
     return () => clearInterval(id);
   }, [firstPushAt, complete]);
 
-  useEffect(() => {
-    if (complete) clearHold();
-  }, [complete]);
-
-  useEffect(() => {
-    return () => clearHold();
-  }, []);
-
-  const triggerFlow = () => {
-    setFlowOn(false);
-    setTimeout(() => setFlowOn(true), 0);
-    setTimeout(() => setFlowOn(false), 280);
-  };
-
-  useEffect(() => {
-    onChange({ complete: false, elapsedSeconds: null });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
   const clearHold = () => {
     if (holdIntervalRef.current) {
       clearInterval(holdIntervalRef.current);
@@ -215,45 +196,58 @@ function InfusionPanel({ orderedAdminDose, onChange }: { orderedAdminDose: strin
     }
   };
 
-  const pushOne = () => {
-    let finished = false;
-    let finishElapsedMs = 0;
+  const pulseFlow = () => {
+    setFlowOn(false);
+    setTimeout(() => setFlowOn(true), 0);
+    setTimeout(() => setFlowOn(false), 280);
+  };
 
-    const start = firstPushAt ?? performance.now();
-    if (!firstPushAt) setFirstPushAt(start);
+  const pushOne = (continuous = false) => {
+    if (continuous) {
+      setFlowOn(true);
+    } else {
+      pulseFlow();
+    }
 
     setRemainingUnits((prev) => {
       if (prev <= 0) return prev;
-      const next = Math.max(0, prev - 1);
-      triggerFlow();
-
-      if (next === 0) {
-        finished = true;
-        finishElapsedMs = performance.now() - start;
-      }
-      return next;
+      return Math.max(0, prev - 1);
     });
 
-    if (finished) {
-      clearHold();
-      setElapsedMs(finishElapsedMs);
-      onChange({ complete: true, elapsedSeconds: Number((finishElapsedMs / 1000).toFixed(2)) });
-    }
+    if (!firstPushAt) setFirstPushAt(performance.now());
   };
 
   const startHoldPush = () => {
-    if (complete) return;
-    if (holdIntervalRef.current) return;
-
-    pushOne();
+    if (complete || holdIntervalRef.current) return;
+    setFlowOn(true);
+    pushOne(true);
     holdIntervalRef.current = setInterval(() => {
-      pushOne();
+      pushOne(true);
     }, 140);
   };
 
   const stopHoldPush = () => {
     clearHold();
+    setFlowOn(false);
   };
+
+  useEffect(() => {
+    onChange({ complete: false, elapsedSeconds: null });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    if (remainingUnits !== 0 || !firstPushAt) return;
+    const finalElapsedMs = performance.now() - firstPushAt;
+    setElapsedMs(finalElapsedMs);
+    clearHold();
+    setFlowOn(false);
+    onChange({ complete: true, elapsedSeconds: Number((finalElapsedMs / 1000).toFixed(2)) });
+  }, [remainingUnits, firstPushAt, onChange]);
+
+  useEffect(() => {
+    return () => clearHold();
+  }, []);
 
   const reset = () => {
     clearHold();
@@ -362,7 +356,6 @@ function InfusionPanel({ orderedAdminDose, onChange }: { orderedAdminDose: strin
                 );
               })}
             </svg>
-
             <svg className="absolute inset-0 h-full w-full" viewBox="0 0 160 160" aria-hidden>
               {[...Array(12)].map((_, i) => {
                 const angle = i * 30 - 90;
@@ -413,7 +406,7 @@ function InfusionPanel({ orderedAdminDose, onChange }: { orderedAdminDose: strin
           disabled={complete}
           className="rounded-xl bg-blue-600 px-4 py-3 text-sm font-bold text-white hover:bg-blue-500 disabled:opacity-40"
         >
-          Push 0.1 mL (hold)
+          Push 0.1 mL
         </button>
         <button
           onClick={reset}
