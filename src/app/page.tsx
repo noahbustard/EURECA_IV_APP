@@ -339,7 +339,7 @@ function InfusionPanel({ orderedAdminDose, onChange }: { orderedAdminDose: strin
     <div className="space-y-4 rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
       <h3 className="text-base font-semibold text-zinc-900">Syringe Infusion Trainer</h3>
 
-      <div className="mx-auto flex h-[510px] w-[360px] items-start justify-center gap-6 pt-2">
+      <div className="mx-auto flex h-[450px] w-[360px] items-start justify-center gap-6 pt-1">
         <div className="relative h-[458px] w-[120px]">
           <div className="absolute left-1/2 top-[34px] h-[2px] w-[80px] -translate-x-1/2 bg-zinc-700" />
           <div className="absolute left-1/2 top-[35px] h-14 w-[50px] -translate-x-1/2 border border-zinc-700 bg-zinc-100 shadow-sm" />
@@ -580,9 +580,9 @@ export default function Home() {
   }
 
   return (
-    <main className="min-h-screen bg-zinc-100 px-6 py-8 text-zinc-900">
-      <div className="mx-auto grid max-w-[1400px] gap-6 xl:grid-cols-[1fr_420px]">
-        <section className="rounded-3xl border border-zinc-200 bg-white p-8 shadow-xl">
+    <main className="bg-zinc-100 px-5 py-4 text-zinc-900">
+      <div className="mx-auto grid max-w-[1400px] gap-4 xl:grid-cols-[1fr_420px]">
+        <section className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-xl">
           <div className="mb-6 flex items-center justify-between">
             <h1 className="text-3xl font-black">IV Medication Card</h1>
             <span className="rounded-full bg-blue-100 px-4 py-1 text-sm font-bold text-blue-700">{progress}</span>
