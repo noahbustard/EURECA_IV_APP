@@ -1,36 +1,47 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# EURECA IV Medication Training Website
 
-## Getting Started
+## Website Summary
+This website was created as an interactive simulation to help users practice the safe administration of IV push medications. Instead of only reading medication instructions on paper, participants move through a guided digital activity where they review medication information, administer the medication using an on-screen syringe, and monitor the time required to complete the task.
 
-First, run the development server:
+The goal of the website is to create a simple, repeatable training experience that allows participants to practice medication timing in a controlled setting. It also makes it possible to collect results in a consistent way so the research team can review performance across participants.
+
+## Simplified Method / Approach
+The website was built to mirror the main steps a participant would follow during the simulation.
+
+1. The participant begins by entering basic background information, such as patient ID, years of experience, and level of nursing.
+2. The participant is then shown one medication at a time with the key order details and instructions needed for that medication.
+3. On the same screen, the participant uses an interactive syringe and clock display to complete the medication administration task.
+4. The website records how long the medication administration took and compares that time to the expected minimum administration time.
+5. After the simulation is complete, the website creates a downloadable spreadsheet file so the results can be reviewed in Excel.
+
+In simple terms, the website was designed to guide the participant through the task, measure timing in a clear way, and organize the results for later analysis.
+
+## Main Features
+- Guided medication-by-medication simulation
+- Large medication display for readability
+- Interactive syringe for simulated IV push administration
+- Clock and timer display to support timing awareness
+- Drug reference pop-up for quick medication guidance
+- Automatic data collection during the simulation
+- Downloadable CSV file for use in Excel
+
+## Data Collected
+The exported spreadsheet includes:
+- Patient ID
+- Years of Experience
+- Level Of Nursing
+- Medication
+- Administration Time
+- Required Minimum Administration Time
+- Compliance Status
+- Completed At
+
+## Running the Website
+To run the website locally:
 
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
-
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
-
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Then open `http://localhost:3000` in a browser.

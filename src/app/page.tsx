@@ -246,14 +246,14 @@ function csvEscape(value: string | number) {
 
 function rowsToCsv(rows: ExportRow[]) {
   const headers = [
-    "patient_identifier",
-    "years_nursing_experience",
-    "level_of_nursing",
-    "medication_name",
-    "medication_administration_time_seconds",
-    "required_minimum_time_seconds",
-    "compliance_status",
-    "completed_at",
+    "Patient ID",
+    "Years of Experience",
+    "Level Of Nursing",
+    "Medication",
+    "Administration Time",
+    "Required Minimum Administration Time",
+    "Compliance Status",
+    "Completed At",
   ];
 
   const values = rows.map((row) =>
