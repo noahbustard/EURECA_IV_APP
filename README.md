@@ -1,11 +1,13 @@
 # EURECA IV Medication Training Website
 
 ## Website Summary
+
 This website was created as an interactive simulation to help users practice the safe administration of IV push medications. Instead of only reading medication instructions on paper, participants move through a guided digital activity where they review medication information, administer the medication using an on-screen syringe, and monitor the time required to complete the task.
 
 The goal of the website is to create a simple, repeatable training experience that allows participants to practice medication timing in a controlled setting. It also makes it possible to collect results in a consistent way so the research team can review performance across participants.
 
 ## Simplified Method / Approach
+
 The website was built to mirror the main steps a participant would follow during the simulation.
 
 1. The participant begins by entering basic background information, such as patient ID, years of experience, and level of nursing.
@@ -17,6 +19,7 @@ The website was built to mirror the main steps a participant would follow during
 In simple terms, the website was designed to guide the participant through the task, measure timing in a clear way, and organize the results for later analysis.
 
 ## Main Features
+
 - Guided medication-by-medication simulation
 - Large medication display for readability
 - Interactive syringe for simulated IV push administration
@@ -26,7 +29,9 @@ In simple terms, the website was designed to guide the participant through the t
 - Downloadable CSV file for use in Excel
 
 ## Data Collected
+
 The exported spreadsheet includes:
+
 - Patient ID
 - Years of Experience
 - Level Of Nursing
@@ -37,6 +42,7 @@ The exported spreadsheet includes:
 - Completed At
 
 ## Running the Website
+
 To run the website locally:
 
 ```bash

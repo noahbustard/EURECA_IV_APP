@@ -18,7 +18,7 @@ type Med = {
   requiredSeconds: number;
 };
 
-type Screen = "home" | "med" | "done";
+type Screen = "home" | "practice" | "med" | "done";
 
 type InfusionResult = {
   complete: boolean;
@@ -27,17 +27,23 @@ type InfusionResult = {
 };
 
 type Participant = {
-  patientIdentifier: string;
-  yearsNursingExperience: string;
-  nursingLevel: string;
+  participantId: string;
+  age: string;
+  gender: string;
+  levelOfNursing: string;
+  yearsOfNursingExperience: string;
 };
+
+type ParticipantErrors = Partial<Record<keyof Participant, string>>;
 
 type ComplianceStatus = "In compliance" | "Not in compliance";
 
 type ExportRow = {
-  patientIdentifier: string;
-  yearsNursingExperience: string;
-  nursingLevel: string;
+  participantId: string;
+  age: string;
+  gender: string;
+  levelOfNursing: string;
+  yearsOfNursingExperience: string;
   medicationName: string;
   medicationAdministrationTimeSeconds: number;
   requiredMinimumSeconds: number;
@@ -45,7 +51,19 @@ type ExportRow = {
   completedAt: string;
 };
 
-const NURSING_LEVELS = ["LVN", "RN", "BSN RN", "MSN RN", "NP", "Other"];
+const GENDER_OPTIONS = ["Female", "Male", "Non-binary", "Prefer not to say"];
+const NURSING_LEVEL_OPTIONS = [
+  "Undergraduate Nursing Student",
+  "Nursing Student",
+  "LVN/LPN",
+  "RN",
+  "BSN",
+  "ADN",
+  "MSN",
+  "DNP",
+  "Other",
+  "Prefer not to say",
+];
 
 const MEDS: Med[] = [
   {
@@ -213,10 +231,6 @@ function vialSizeForDose(doseMl: number) {
   return 10;
 }
 
-function randomPatientId() {
-  return `P-${Math.floor(100000 + Math.random() * 900000)}`;
-}
-
 function formatCompletedAt(date: Date) {
   const month = String(date.getMonth() + 1).padStart(2, "0");
   const day = String(date.getDate()).padStart(2, "0");
@@ -238,17 +252,54 @@ function formatSeconds(totalSeconds: number) {
   return `${String(mins).padStart(2, "0")}:${String(secs).padStart(2, "0")}`;
 }
 
+function validateParticipant(participant: Participant): ParticipantErrors {
+  const errors: ParticipantErrors = {};
+  const participantId = participant.participantId.trim();
+  const age = participant.age.trim();
+  const yearsOfNursingExperience = participant.yearsOfNursingExperience.trim();
+
+  if (participantId && !/^[a-z0-9]+$/i.test(participantId)) {
+    errors.participantId = "Participant ID can include letters and numbers only.";
+  }
+
+  if (age && !/^\d+$/.test(age)) {
+    errors.age = "Age must be entered as a whole number.";
+  } else if (age) {
+    const parsedAge = Number(age);
+    if (parsedAge < 16 || parsedAge > 100) {
+      errors.age = "Age must be between 16 and 100.";
+    }
+  }
+
+  if (yearsOfNursingExperience && !/^\d+(?:\.\d+)?$/.test(yearsOfNursingExperience)) {
+    errors.yearsOfNursingExperience = "Years of nursing experience must be a number.";
+  } else if (yearsOfNursingExperience) {
+    const parsedYears = Number(yearsOfNursingExperience);
+    if (parsedYears < 0 || parsedYears > 80) {
+      errors.yearsOfNursingExperience = "Years of nursing experience must be between 0 and 80.";
+    }
+  }
+
+  return errors;
+}
+
 function csvEscape(value: string | number) {
   const text = String(value ?? "");
   if (/["\n,]/.test(text)) return `"${text.replace(/"/g, '""')}"`;
   return text;
 }
 
+function displayParticipantValue(value: string) {
+  return value.trim() || "Not entered";
+}
+
 function rowsToCsv(rows: ExportRow[]) {
   const headers = [
-    "Patient ID",
-    "Years of Experience",
+    "Participant ID",
+    "Age",
+    "Gender",
     "Level Of Nursing",
+    "Years of Nursing Experience",
     "Medication",
     "Administration Time",
     "Required Minimum Administration Time",
@@ -258,9 +309,11 @@ function rowsToCsv(rows: ExportRow[]) {
 
   const values = rows.map((row) =>
     [
-      row.patientIdentifier,
-      row.yearsNursingExperience,
-      row.nursingLevel,
+      row.participantId,
+      row.age,
+      row.gender,
+      row.levelOfNursing,
+      row.yearsOfNursingExperience,
       row.medicationName,
       row.medicationAdministrationTimeSeconds,
       row.requiredMinimumSeconds,
@@ -283,6 +336,7 @@ function InfusionPanel({ orderedAdminDose, onChange }: { orderedAdminDose: strin
   const [firstPushAt, setFirstPushAt] = useState<number | null>(null);
   const [elapsedMs, setElapsedMs] = useState(0);
   const [nowMs, setNowMs] = useState(performance.now());
+  const [showResetConfirm, setShowResetConfirm] = useState(false);
   const [flowMode, setFlowMode] = useState<"idle" | "click" | "hold">("idle");
   const holdIntervalRef = useMemo<{ current: ReturnType<typeof setInterval> | null }>(() => ({ current: null }), []);
   const holdStartTimeoutRef = useMemo<{ current: ReturnType<typeof setTimeout> | null }>(() => ({ current: null }), []);
@@ -399,6 +453,19 @@ function InfusionPanel({ orderedAdminDose, onChange }: { orderedAdminDose: strin
   useEffect(() => {
     return () => clearHold();
   }, [clearHold]);
+
+  useEffect(() => {
+    if (!showResetConfirm) return;
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setShowResetConfirm(false);
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [showResetConfirm]);
 
   const reset = () => {
     clearHold();
@@ -616,7 +683,7 @@ function InfusionPanel({ orderedAdminDose, onChange }: { orderedAdminDose: strin
           Push 0.1 mL
         </button>
         <button
-          onClick={reset}
+          onClick={() => setShowResetConfirm(true)}
           className="rounded-xl bg-zinc-700 px-4 py-4 text-base font-bold text-white hover:bg-zinc-600"
         >
           Reset Dose
@@ -634,6 +701,44 @@ function InfusionPanel({ orderedAdminDose, onChange }: { orderedAdminDose: strin
           Medication infused ✅ Total infusion time: {Number((elapsedMs / 1000).toFixed(2))} seconds
         </div>
       )}
+
+      {showResetConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-6">
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="reset-dialog-title"
+            className="w-full max-w-md rounded-3xl border border-zinc-200 bg-white p-6 shadow-2xl"
+          >
+            <p id="reset-dialog-title" className="text-2xl font-black text-zinc-900">
+              Are you sure?
+            </p>
+            <p className="mt-3 text-base text-zinc-600">
+              Resetting now will clear the current syringe progress and timer for this run.
+            </p>
+            <div className="mt-6 flex flex-wrap gap-3">
+              <button
+                type="button"
+                autoFocus
+                onClick={() => setShowResetConfirm(false)}
+                className="rounded-2xl bg-zinc-200 px-5 py-3 text-base font-bold text-zinc-900 hover:bg-zinc-300"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  reset();
+                  setShowResetConfirm(false);
+                }}
+                className="rounded-2xl bg-rose-600 px-5 py-3 text-base font-bold text-white hover:bg-rose-500"
+              >
+                Confirm Reset
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -644,15 +749,28 @@ export default function Home() {
   const [showRef, setShowRef] = useState(false);
   const [infusionByMed, setInfusionByMed] = useState<Record<number, InfusionResult>>({});
   const [participant, setParticipant] = useState<Participant>({
-    patientIdentifier: "",
-    yearsNursingExperience: "",
-    nursingLevel: "RN",
+    participantId: "",
+    age: "",
+    gender: "",
+    levelOfNursing: "",
+    yearsOfNursingExperience: "",
   });
+  const [participantErrors, setParticipantErrors] = useState<ParticipantErrors>({});
 
   const med = MEDS[index];
-  const progress = useMemo(() => `${index + 1} / ${MEDS.length}`, [index]);
+  const progress = useMemo(() => String(index + 1) + " / " + String(MEDS.length), [index]);
   const canAdvance = infusionByMed[index]?.complete ?? false;
-  const participantIdForSession = participant.patientIdentifier.trim() || "Unassigned";
+  const participantIdForSession = participant.participantId.trim() || "Not entered";
+
+  const updateParticipantField = (field: keyof Participant, value: string) => {
+    setParticipant((prev) => ({ ...prev, [field]: value }));
+    setParticipantErrors((prev) => {
+      if (!prev[field]) return prev;
+      const next = { ...prev };
+      delete next[field];
+      return next;
+    });
+  };
 
   const handleInfusionChange = useCallback(
     (result: InfusionResult) => {
@@ -661,6 +779,8 @@ export default function Home() {
     [index],
   );
 
+  const handlePracticeChange = useCallback(() => {}, []);
+
   const exportRows = useMemo<ExportRow[]>(() => {
     return MEDS.flatMap((entry, medIndex) => {
       const result = infusionByMed[medIndex];
@@ -668,9 +788,11 @@ export default function Home() {
 
       return [
         {
-          patientIdentifier: participantIdForSession,
-          yearsNursingExperience: participant.yearsNursingExperience.trim() || "Not provided",
-          nursingLevel: participant.nursingLevel.trim() || "Not provided",
+          participantId: participant.participantId.trim(),
+          age: participant.age.trim(),
+          gender: participant.gender,
+          levelOfNursing: participant.levelOfNursing,
+          yearsOfNursingExperience: participant.yearsOfNursingExperience.trim(),
           medicationName: entry.name,
           medicationAdministrationTimeSeconds: Number(result.elapsedSeconds.toFixed(2)),
           requiredMinimumSeconds: entry.requiredSeconds,
@@ -679,7 +801,14 @@ export default function Home() {
         },
       ];
     });
-  }, [infusionByMed, participant.yearsNursingExperience, participant.nursingLevel, participantIdForSession]);
+  }, [
+    infusionByMed,
+    participant.age,
+    participant.gender,
+    participant.levelOfNursing,
+    participant.participantId,
+    participant.yearsOfNursingExperience,
+  ]);
 
   const downloadCsv = useCallback(() => {
     if (!exportRows.length) return;
@@ -689,25 +818,45 @@ export default function Home() {
     const url = URL.createObjectURL(blob);
     const anchor = document.createElement("a");
     const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
-    const safePatientId = participantIdForSession.replace(/[^a-z0-9_-]+/gi, "-");
+    const safeParticipantId = participant.participantId.trim().replace(/[^a-z0-9_-]+/gi, "-") || "participant";
     anchor.href = url;
-    anchor.download = `simulation-data-${safePatientId}-${timestamp}.csv`;
+    anchor.download = "simulation-data-" + safeParticipantId + "-" + timestamp + ".csv";
     document.body.appendChild(anchor);
     anchor.click();
     document.body.removeChild(anchor);
     URL.revokeObjectURL(url);
-  }, [exportRows, participantIdForSession]);
+  }, [exportRows, participant.participantId]);
 
-  const startSimulation = () => {
+  const openPracticeRun = () => {
+    const errors = validateParticipant(participant);
+    setParticipantErrors(errors);
+    if (Object.keys(errors).length > 0) return;
+
     setShowRef(false);
     setIndex(0);
     setInfusionByMed({});
-    const providedId = participant.patientIdentifier.trim();
-    if (!providedId) {
-      const generatedId = randomPatientId();
-      setParticipant((prev) => ({ ...prev, patientIdentifier: generatedId }));
+    setScreen("practice");
+  };
+
+  const startActualSimulation = () => {
+    const errors = validateParticipant(participant);
+    setParticipantErrors(errors);
+    if (Object.keys(errors).length > 0) {
+      setScreen("home");
+      return;
     }
+
+    setShowRef(false);
+    setIndex(0);
+    setInfusionByMed({});
     setScreen("med");
+  };
+
+  const backToIntake = () => {
+    setShowRef(false);
+    setScreen("home");
+    setIndex(0);
+    setInfusionByMed({});
   };
 
   const toHome = () => {
@@ -715,7 +864,14 @@ export default function Home() {
     setScreen("home");
     setIndex(0);
     setInfusionByMed({});
-    setParticipant((prev) => ({ ...prev, patientIdentifier: "" }));
+    setParticipant({
+      participantId: "",
+      age: "",
+      gender: "",
+      levelOfNursing: "",
+      yearsOfNursingExperience: "",
+    });
+    setParticipantErrors({});
   };
 
   if (screen === "home") {
@@ -725,7 +881,7 @@ export default function Home() {
           <p className="inline-flex rounded-full bg-blue-100 px-4 py-1 text-sm font-semibold text-blue-700">Medication Rate Simulation</p>
           <h1 className="mt-5 text-4xl font-black tracking-tight md:text-5xl">IV Push Medication Training</h1>
           <p className="mt-4 max-w-3xl text-lg text-zinc-600">
-            Infuse intravenous medications at a safe rate of administration. Use medication reference information as needed, then return and continue the simulation.
+            Review participant information, move through a practice run, and then begin the actual medication simulation.
           </p>
 
           <div className="mt-10 grid gap-4 md:grid-cols-3">
@@ -734,8 +890,8 @@ export default function Home() {
               <p className="mt-1 text-3xl font-bold">{MEDS.length}</p>
             </div>
             <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-5">
-              <p className="text-sm font-semibold uppercase tracking-wide text-zinc-500">Format</p>
-              <p className="mt-1 text-3xl font-bold">Step-by-step</p>
+              <p className="text-sm font-semibold uppercase tracking-wide text-zinc-500">Pre-Simulation Step</p>
+              <p className="mt-1 text-3xl font-bold">Practice Run</p>
             </div>
             <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-5">
               <p className="text-sm font-semibold uppercase tracking-wide text-zinc-500">Data Export</p>
@@ -744,19 +900,85 @@ export default function Home() {
           </div>
 
           <div className="mt-8 rounded-2xl border border-zinc-200 bg-zinc-50 p-6">
-            <h2 className="text-2xl font-bold text-zinc-900">Participant Data</h2>
-            <p className="mt-2 text-sm text-zinc-600">This data is included in the CSV export and can be sorted in Excel.</p>
+            <h2 className="text-2xl font-bold text-zinc-900">Participant Information</h2>
 
-            <div className="mt-5 grid gap-4 md:grid-cols-3">
+            <div className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
               <label className="space-y-2">
-                <span className="text-sm font-semibold uppercase tracking-wide text-zinc-600">Patient Identifier</span>
+                <span className="text-sm font-semibold uppercase tracking-wide text-zinc-600">Participant ID</span>
                 <input
                   type="text"
-                  value={participant.patientIdentifier}
-                  onChange={(event) => setParticipant((prev) => ({ ...prev, patientIdentifier: event.target.value }))}
-                  placeholder="Optional (auto-generated if blank)"
-                  className="w-full rounded-xl border border-zinc-300 bg-white px-4 py-3 text-lg font-semibold text-zinc-900 outline-none ring-blue-200 transition focus:ring"
+                  value={participant.participantId}
+                  onChange={(event) => updateParticipantField("participantId", event.target.value)}
+                  placeholder="e.g. P386025"
+                  aria-invalid={Boolean(participantErrors.participantId)}
+                  className={
+                    "w-full rounded-xl border bg-white px-4 py-3 text-lg font-semibold text-zinc-900 outline-none transition focus:ring " +
+                    (participantErrors.participantId ? "border-rose-500 ring-rose-200" : "border-zinc-300 ring-blue-200")
+                  }
                 />
+                {participantErrors.participantId && <p className="text-sm font-semibold text-rose-700">{participantErrors.participantId}</p>}
+              </label>
+
+              <label className="space-y-2">
+                <span className="text-sm font-semibold uppercase tracking-wide text-zinc-600">Age</span>
+                <input
+                  type="number"
+                  min="16"
+                  max="100"
+                  step="1"
+                  inputMode="numeric"
+                  value={participant.age}
+                  onChange={(event) => updateParticipantField("age", event.target.value)}
+                  placeholder="e.g. 24"
+                  aria-invalid={Boolean(participantErrors.age)}
+                  className={
+                    "w-full rounded-xl border bg-white px-4 py-3 text-lg font-semibold text-zinc-900 outline-none transition focus:ring " +
+                    (participantErrors.age ? "border-rose-500 ring-rose-200" : "border-zinc-300 ring-blue-200")
+                  }
+                />
+                {participantErrors.age && <p className="text-sm font-semibold text-rose-700">{participantErrors.age}</p>}
+              </label>
+
+              <label className="space-y-2">
+                <span className="text-sm font-semibold uppercase tracking-wide text-zinc-600">Gender</span>
+                <select
+                  value={participant.gender}
+                  onChange={(event) => updateParticipantField("gender", event.target.value)}
+                  aria-invalid={Boolean(participantErrors.gender)}
+                  className={
+                    "w-full rounded-xl border bg-white px-4 py-3 text-lg font-semibold text-zinc-900 outline-none transition focus:ring " +
+                    (participantErrors.gender ? "border-rose-500 ring-rose-200" : "border-zinc-300 ring-blue-200")
+                  }
+                >
+                  <option value="">Select an option</option>
+                  {GENDER_OPTIONS.map((option) => (
+                    <option key={option} value={option}>
+                      {option}
+                    </option>
+                  ))}
+                </select>
+                {participantErrors.gender && <p className="text-sm font-semibold text-rose-700">{participantErrors.gender}</p>}
+              </label>
+
+              <label className="space-y-2">
+                <span className="text-sm font-semibold uppercase tracking-wide text-zinc-600">Level of Nursing</span>
+                <select
+                  value={participant.levelOfNursing}
+                  onChange={(event) => updateParticipantField("levelOfNursing", event.target.value)}
+                  aria-invalid={Boolean(participantErrors.levelOfNursing)}
+                  className={
+                    "w-full rounded-xl border bg-white px-4 py-3 text-lg font-semibold text-zinc-900 outline-none transition focus:ring " +
+                    (participantErrors.levelOfNursing ? "border-rose-500 ring-rose-200" : "border-zinc-300 ring-blue-200")
+                  }
+                >
+                  <option value="">Select an option</option>
+                  {NURSING_LEVEL_OPTIONS.map((option) => (
+                    <option key={option} value={option}>
+                      {option}
+                    </option>
+                  ))}
+                </select>
+                {participantErrors.levelOfNursing && <p className="text-sm font-semibold text-rose-700">{participantErrors.levelOfNursing}</p>}
               </label>
 
               <label className="space-y-2">
@@ -764,38 +986,84 @@ export default function Home() {
                 <input
                   type="number"
                   min="0"
+                  max="80"
                   step="0.5"
-                  value={participant.yearsNursingExperience}
-                  onChange={(event) => setParticipant((prev) => ({ ...prev, yearsNursingExperience: event.target.value }))}
-                  placeholder="e.g. 6"
-                  className="w-full rounded-xl border border-zinc-300 bg-white px-4 py-3 text-lg font-semibold text-zinc-900 outline-none ring-blue-200 transition focus:ring"
+                  inputMode="decimal"
+                  value={participant.yearsOfNursingExperience}
+                  onChange={(event) => updateParticipantField("yearsOfNursingExperience", event.target.value)}
+                  placeholder="e.g. 2.5"
+                  aria-invalid={Boolean(participantErrors.yearsOfNursingExperience)}
+                  className={
+                    "w-full rounded-xl border bg-white px-4 py-3 text-lg font-semibold text-zinc-900 outline-none transition focus:ring " +
+                    (participantErrors.yearsOfNursingExperience ? "border-rose-500 ring-rose-200" : "border-zinc-300 ring-blue-200")
+                  }
                 />
-              </label>
-
-              <label className="space-y-2">
-                <span className="text-sm font-semibold uppercase tracking-wide text-zinc-600">Level of Nursing</span>
-                <select
-                  value={participant.nursingLevel}
-                  onChange={(event) => setParticipant((prev) => ({ ...prev, nursingLevel: event.target.value }))}
-                  className="w-full rounded-xl border border-zinc-300 bg-white px-4 py-3 text-lg font-semibold text-zinc-900 outline-none ring-blue-200 transition focus:ring"
-                >
-                  {NURSING_LEVELS.map((level) => (
-                    <option key={level} value={level}>
-                      {level}
-                    </option>
-                  ))}
-                </select>
+                {participantErrors.yearsOfNursingExperience && (
+                  <p className="text-sm font-semibold text-rose-700">{participantErrors.yearsOfNursingExperience}</p>
+                )}
               </label>
             </div>
-
-            <p className="mt-4 text-sm text-zinc-600">
-              If patient identifier is left blank, one will be generated automatically when simulation starts.
-            </p>
           </div>
 
-          <button onClick={startSimulation} className="mt-10 rounded-2xl bg-blue-600 px-8 py-5 text-xl font-bold text-white shadow-lg transition hover:bg-blue-500">
-            Start Simulation
+          <button onClick={openPracticeRun} className="mt-10 rounded-2xl bg-blue-600 px-8 py-5 text-xl font-bold text-white shadow-lg transition hover:bg-blue-500">
+            Continue to Practice Run
           </button>
+        </div>
+      </main>
+    );
+  }
+
+  if (screen === "practice") {
+    return (
+      <main className="min-h-screen bg-gradient-to-b from-amber-50 to-zinc-100 px-4 py-6 text-zinc-900 md:px-6 md:py-10">
+        <div className="mx-auto grid max-w-[1580px] gap-4 xl:grid-cols-[1fr_560px]">
+          <section className="rounded-3xl border border-amber-200 bg-white p-6 shadow-xl md:p-8">
+            <p className="inline-flex rounded-full bg-amber-100 px-4 py-1 text-sm font-semibold text-amber-800">Practice Mode</p>
+            <h1 className="mt-5 text-4xl font-black tracking-tight">Practice Run</h1>
+            <p className="mt-4 max-w-3xl text-lg text-zinc-600">
+              Use this screen to get comfortable with the syringe controls and timing display before the actual simulation begins.
+            </p>
+
+            <div className="mt-8 rounded-2xl border border-amber-200 bg-amber-50 p-6">
+              <p className="text-xl font-bold text-zinc-900">This is practice only.</p>
+              <p className="mt-2 text-base text-zinc-700">
+                Practice activity does not count as the actual run, and nothing from this screen is included in the exported study results.
+              </p>
+            </div>
+
+            <div className="mt-6 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+              <SummaryCard label="Participant ID" value={displayParticipantValue(participant.participantId)} />
+              <SummaryCard label="Age" value={displayParticipantValue(participant.age)} />
+              <SummaryCard label="Gender" value={displayParticipantValue(participant.gender)} />
+              <SummaryCard label="Level of Nursing" value={displayParticipantValue(participant.levelOfNursing)} />
+              <SummaryCard label="Years of Nursing Experience" value={displayParticipantValue(participant.yearsOfNursingExperience)} />
+            </div>
+
+            <div className="mt-6 rounded-2xl border border-zinc-200 bg-zinc-50 p-6">
+              <p className="text-sm font-semibold uppercase tracking-wide text-zinc-500">How to use this step</p>
+              <ol className="mt-3 space-y-2 text-base text-zinc-700">
+                <li>1. Try the syringe controls and watch the timer respond as you administer the dose.</li>
+                <li>2. Use Reset Dose if you want to start the practice attempt over.</li>
+                <li>3. When you are ready, start the actual simulation. The real run will begin fresh.</li>
+              </ol>
+            </div>
+
+            <div className="mt-8 flex flex-wrap gap-3">
+              <button onClick={backToIntake} className="rounded-2xl bg-zinc-800 px-6 py-4 text-lg font-bold text-white hover:bg-zinc-700">
+                Back to Participant Info
+              </button>
+              <button onClick={startActualSimulation} className="rounded-2xl bg-blue-600 px-6 py-4 text-lg font-bold text-white hover:bg-blue-500">
+                Start Actual Simulation
+              </button>
+            </div>
+          </section>
+
+          <aside>
+            <div className="rounded-3xl border border-zinc-200 bg-white p-4 shadow-xl">
+              <p className="mb-3 text-sm font-semibold uppercase tracking-wide text-amber-700">Practice Syringe</p>
+              <InfusionPanel key="practice" orderedAdminDose="4 mg = 2 mL" onChange={handlePracticeChange} />
+            </div>
+          </aside>
         </div>
       </main>
     );
@@ -807,9 +1075,17 @@ export default function Home() {
         <div className="w-full max-w-6xl rounded-3xl border border-emerald-200 bg-white p-6 shadow-xl md:p-10">
           <h1 className="text-4xl font-black text-zinc-900">Simulation Complete</h1>
           <p className="mt-3 text-lg text-zinc-600">
-            Participant ID: <span className="font-semibold text-zinc-900">{participantIdForSession}</span>
+            Participant ID: <span className="font-semibold text-zinc-900">{displayParticipantValue(participant.participantId)}</span>
           </p>
           <p className="mt-1 text-zinc-600">You can download the collected data below and open it directly in Excel.</p>
+
+          <div className="mt-6 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+            <SummaryCard label="Participant ID" value={displayParticipantValue(participant.participantId)} />
+            <SummaryCard label="Age" value={displayParticipantValue(participant.age)} />
+            <SummaryCard label="Gender" value={displayParticipantValue(participant.gender)} />
+            <SummaryCard label="Level of Nursing" value={displayParticipantValue(participant.levelOfNursing)} />
+            <SummaryCard label="Years of Nursing Experience" value={displayParticipantValue(participant.yearsOfNursingExperience)} />
+          </div>
 
           <div className="mt-6 overflow-x-auto rounded-2xl border border-zinc-200">
             <table className="min-w-full divide-y divide-zinc-200 text-left text-sm">
@@ -827,7 +1103,13 @@ export default function Home() {
                     <td className="px-4 py-3 text-zinc-900">{row.medicationName}</td>
                     <td className="px-4 py-3 font-semibold text-zinc-900">{row.medicationAdministrationTimeSeconds}</td>
                     <td className="px-4 py-3 text-zinc-700">{row.requiredMinimumSeconds}</td>
-                    <td className={`px-4 py-3 font-semibold ${row.complianceStatus === "In compliance" ? "text-emerald-700" : "text-rose-700"}`}>
+                    <td
+                      className={
+                        row.complianceStatus === "In compliance"
+                          ? "px-4 py-3 font-semibold text-emerald-700"
+                          : "px-4 py-3 font-semibold text-rose-700"
+                      }
+                    >
                       {row.complianceStatus}
                     </td>
                   </tr>
@@ -861,7 +1143,7 @@ export default function Home() {
             <h1 className="text-4xl font-black">IV Medication Card</h1>
             <div className="flex flex-wrap gap-2">
               <span className="rounded-full bg-blue-100 px-4 py-2 text-base font-bold text-blue-700">{progress}</span>
-              <span className="rounded-full bg-zinc-100 px-4 py-2 text-base font-semibold text-zinc-700">Patient ID: {participantIdForSession}</span>
+              <span className="rounded-full bg-zinc-100 px-4 py-2 text-base font-semibold text-zinc-700">Participant ID: {participantIdForSession}</span>
             </div>
           </div>
 
@@ -904,8 +1186,8 @@ export default function Home() {
             </button>
             <button
               onClick={() => {
-                if (index === 0) toHome();
-                else setIndex((v) => v - 1);
+                if (index === 0) backToIntake();
+                else setIndex((value) => value - 1);
                 setShowRef(false);
               }}
               className="rounded-2xl bg-zinc-800 px-6 py-4 text-lg font-bold text-white hover:bg-zinc-700"
@@ -916,7 +1198,7 @@ export default function Home() {
               onClick={() => {
                 setShowRef(false);
                 if (index === MEDS.length - 1) setScreen("done");
-                else setIndex((v) => v + 1);
+                else setIndex((value) => value + 1);
               }}
               disabled={!canAdvance}
               className="rounded-2xl bg-blue-600 px-6 py-4 text-lg font-bold text-white hover:bg-blue-500 disabled:opacity-40"
@@ -927,12 +1209,13 @@ export default function Home() {
           {!canAdvance && <p className="mt-2 text-base font-semibold text-amber-700">Complete syringe infusion to continue.</p>}
           {canAdvance && infusionByMed[index]?.elapsedSeconds !== null && (
             <p
-              className={`mt-3 text-base font-semibold ${
-                complianceForElapsed(infusionByMed[index].elapsedSeconds ?? 0, med.requiredSeconds) === "In compliance" ? "text-emerald-700" : "text-rose-700"
-              }`}
+              className={
+                complianceForElapsed(infusionByMed[index].elapsedSeconds ?? 0, med.requiredSeconds) === "In compliance"
+                  ? "mt-3 text-base font-semibold text-emerald-700"
+                  : "mt-3 text-base font-semibold text-rose-700"
+              }
             >
-              {complianceForElapsed(infusionByMed[index].elapsedSeconds ?? 0, med.requiredSeconds)}:{" "}
-              {Number((infusionByMed[index].elapsedSeconds ?? 0).toFixed(2))} seconds (target {med.requiredSeconds} seconds or more).
+              {complianceForElapsed(infusionByMed[index].elapsedSeconds ?? 0, med.requiredSeconds)}: {Number((infusionByMed[index].elapsedSeconds ?? 0).toFixed(2))} seconds (target {med.requiredSeconds} seconds or more).
             </p>
           )}
         </section>
@@ -955,6 +1238,15 @@ export default function Home() {
         </div>
       )}
     </main>
+  );
+}
+
+function SummaryCard({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-2xl border border-zinc-200 bg-white p-4">
+      <p className="text-sm font-semibold uppercase tracking-wide text-zinc-500">{label}</p>
+      <p className="mt-2 text-lg font-semibold text-zinc-900">{value}</p>
+    </div>
   );
 }
 
