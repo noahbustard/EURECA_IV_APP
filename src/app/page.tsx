@@ -18,7 +18,7 @@ type Med = {
   requiredSeconds: number;
 };
 
-type Screen = "home" | "practice" | "med" | "done";
+type Screen = "landing" | "consent" | "demographics" | "practice" | "med" | "done";
 
 type InfusionResult = {
   complete: boolean;
@@ -59,6 +59,8 @@ type ConsentSection = {
   paragraphs?: string[];
   bullets?: string[];
 };
+
+type ConsentChoice = "agree" | "disagree";
 
 const GENDER_OPTIONS = ["Female", "Male", "Non-binary", "Prefer not to say"];
 const NURSING_LEVEL_OPTIONS = [
@@ -840,14 +842,14 @@ function InfusionPanel({ orderedAdminDose, onChange }: { orderedAdminDose: strin
 }
 
 export default function Home() {
-  const [screen, setScreen] = useState<Screen>("home");
+  const [screen, setScreen] = useState<Screen>("landing");
   const [index, setIndex] = useState(0);
   const [showRef, setShowRef] = useState(false);
   const [infusionByMed, setInfusionByMed] = useState<Record<number, InfusionResult>>({});
   const [referenceOpenedByMed, setReferenceOpenedByMed] = useState<Record<number, boolean>>({});
   const [participant, setParticipant] = useState<Participant>(() => createParticipant());
   const [participantErrors, setParticipantErrors] = useState<ParticipantErrors>({});
-  const [consentSignature, setConsentSignature] = useState("");
+  const [consentChoice, setConsentChoice] = useState<ConsentChoice | null>(null);
   const [consentAcceptedAt, setConsentAcceptedAt] = useState<string | null>(null);
   const [consentReachedBottom, setConsentReachedBottom] = useState(false);
   const [consentError, setConsentError] = useState("");
@@ -857,7 +859,7 @@ export default function Home() {
   const activeMed = screen === "practice" ? PRACTICE_MED : med;
   const progress = useMemo(() => String(index + 1) + " / " + String(MEDS.length), [index]);
   const canAdvance = infusionByMed[index]?.complete ?? false;
-  const participantIdForSession = participant.participantId.trim() || "Pending assignment";
+  const participantIdForSession = participant.participantId.trim();
   const consentAccepted = Boolean(consentAcceptedAt);
 
   const updateParticipantField = (field: keyof Participant, value: string) => {
@@ -887,20 +889,36 @@ export default function Home() {
     if (distanceFromBottom <= 8) setConsentReachedBottom(true);
   };
 
-  const signConsent = () => {
+  const selectConsentChoice = (choice: ConsentChoice) => {
+    setConsentChoice(choice);
+    setConsentError("");
+  };
+
+  const goToConsent = () => {
+    setConsentError("");
+    setScreen("consent");
+  };
+
+  const continueFromConsent = () => {
     if (!consentReachedBottom) {
       setConsentError("Scroll to the bottom of the consent form before agreeing.");
       return;
     }
 
-    if (!consentSignature.trim()) {
-      setConsentError("Enter a typed signature before agreeing.");
+    if (!consentChoice) {
+      setConsentError("Select I Agree or I Do Not Agree before continuing.");
+      return;
+    }
+
+    if (consentChoice === "disagree") {
+      setConsentError("You must agree to the following terms to participate in this study.");
       return;
     }
 
     setParticipant((prev) => (prev.participantId ? prev : { ...prev, participantId: generateParticipantId() }));
-    setConsentAcceptedAt(formatCompletedAt(new Date()));
+    setConsentAcceptedAt((prev) => prev ?? formatCompletedAt(new Date()));
     setConsentError("");
+    setScreen("demographics");
   };
 
   const openDrugReference = () => {
@@ -963,7 +981,8 @@ export default function Home() {
 
   const openPracticeRun = () => {
     if (!consentAccepted) {
-      setConsentError("Consent must be signed before continuing.");
+      setScreen("consent");
+      setConsentError("You must agree to the following terms to participate in this study.");
       return;
     }
 
@@ -980,15 +999,15 @@ export default function Home() {
 
   const startActualSimulation = () => {
     if (!consentAccepted) {
-      setConsentError("Consent must be signed before continuing.");
-      setScreen("home");
+      setConsentError("You must agree to the following terms to participate in this study.");
+      setScreen("consent");
       return;
     }
 
     const errors = validateParticipant(participant);
     setParticipantErrors(errors);
     if (Object.keys(errors).length > 0) {
-      setScreen("home");
+      setScreen("demographics");
       return;
     }
 
@@ -999,9 +1018,9 @@ export default function Home() {
     setScreen("med");
   };
 
-  const backToIntake = () => {
+  const backToDemographics = () => {
     setShowRef(false);
-    setScreen("home");
+    setScreen("demographics");
     setIndex(0);
     setInfusionByMed({});
     setReferenceOpenedByMed({});
@@ -1009,67 +1028,85 @@ export default function Home() {
 
   const toHome = () => {
     setShowRef(false);
-    setScreen("home");
+    setScreen("landing");
     setIndex(0);
     setInfusionByMed({});
     setReferenceOpenedByMed({});
     setParticipant(createParticipant());
     setParticipantErrors({});
-    setConsentSignature("");
+    setConsentChoice(null);
     setConsentAcceptedAt(null);
     setConsentReachedBottom(false);
     setConsentError("");
   };
 
-  if (screen === "home") {
+  if (screen === "landing") {
     return (
       <main className="min-h-screen bg-gradient-to-b from-zinc-50 to-zinc-100 px-6 py-10 text-zinc-900">
-        <ParticipantIdBadge participantId={participantIdForSession} />
-        <div className="mx-auto max-w-6xl rounded-3xl border border-zinc-200 bg-white p-8 shadow-xl md:p-10">
-          <p className="inline-flex rounded-full bg-blue-100 px-4 py-1 text-sm font-semibold text-blue-700">Medication Rate Simulation</p>
-          <h1 className="mt-5 text-4xl font-black tracking-tight md:text-5xl">IV Push Medication Training</h1>
-          <p className="mt-4 max-w-3xl text-lg text-zinc-600">
-            Review participant information, move through a practice run, and then begin the actual medication simulation.
-          </p>
+        <div className="mx-auto max-w-6xl">
+          <div className="rounded-3xl border border-zinc-200 bg-white p-8 shadow-xl md:p-10">
+            <p className="inline-flex rounded-full bg-blue-100 px-4 py-1 text-sm font-semibold text-blue-700">Medication Rate Simulation</p>
+            <h1 className="mt-5 text-4xl font-black tracking-tight md:text-5xl">IV Push Medication Training</h1>
+            <p className="mt-4 max-w-3xl text-lg text-zinc-600">
+              Review participant information, move through a practice run, and then begin the actual medication simulation.
+            </p>
 
-          <div className="mt-10 grid gap-4 md:grid-cols-3">
-            <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-5">
-              <p className="text-sm font-semibold uppercase tracking-wide text-zinc-500">Total Medications</p>
-              <p className="mt-1 text-3xl font-bold">{MEDS.length}</p>
-            </div>
-            <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-5">
-              <p className="text-sm font-semibold uppercase tracking-wide text-zinc-500">Pre-Simulation Step</p>
-              <p className="mt-1 text-3xl font-bold">Practice Run</p>
-            </div>
-            <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-5">
-              <p className="text-sm font-semibold uppercase tracking-wide text-zinc-500">Data Export</p>
-              <p className="mt-1 text-3xl font-bold">CSV / Excel</p>
-            </div>
-          </div>
-
-          <div className="mt-8 rounded-2xl border border-blue-200 bg-blue-50 p-6">
-            <div className="flex flex-wrap items-start justify-between gap-4">
-              <div>
-                <h2 className="text-2xl font-bold text-zinc-900">Consent Form</h2>
-                <p className="mt-2 max-w-3xl text-base text-zinc-700">
-                  Review and sign the consent form before entering any demographic information.
-                </p>
+            <div className="mt-10 grid gap-4 md:grid-cols-3">
+              <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-5">
+                <p className="text-sm font-semibold uppercase tracking-wide text-zinc-500">Total Medications</p>
+                <p className="mt-1 text-3xl font-bold">{MEDS.length}</p>
               </div>
-              {consentAccepted && (
-                <span className="rounded-full bg-emerald-100 px-4 py-2 text-sm font-bold text-emerald-800">
-                  Signed {consentAcceptedAt}
-                </span>
-              )}
+              <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-5">
+                <p className="text-sm font-semibold uppercase tracking-wide text-zinc-500">Pre-Simulation Step</p>
+                <p className="mt-1 text-3xl font-bold">Practice Run</p>
+              </div>
+              <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-5">
+                <p className="text-sm font-semibold uppercase tracking-wide text-zinc-500">Data Export</p>
+                <p className="mt-1 text-3xl font-bold">CSV / Excel</p>
+              </div>
             </div>
+
+            <div className="mt-8 rounded-2xl border border-zinc-200 bg-zinc-50 p-6">
+              <p className="text-sm font-semibold uppercase tracking-wide text-zinc-500">How it works</p>
+              <ol className="mt-3 space-y-2 text-base text-zinc-700">
+                <li>1. Review the informed consent form.</li>
+                <li>2. Complete the participant information page.</li>
+                <li>3. Move through the practice run and then the medication simulation.</li>
+              </ol>
+            </div>
+
+            <button
+              onClick={goToConsent}
+              className="mt-10 rounded-2xl bg-blue-600 px-8 py-5 text-xl font-bold text-white shadow-lg transition hover:bg-blue-500"
+            >
+              Next
+            </button>
+          </div>
+        </div>
+      </main>
+    );
+  }
+
+  if (screen === "consent") {
+    return (
+      <main className="min-h-screen bg-gradient-to-b from-zinc-50 to-zinc-100 px-6 py-10 text-zinc-900">
+        <div className="mx-auto max-w-5xl">
+          <ParticipantIdTab participantId={participantIdForSession} />
+          <div className="rounded-3xl border border-blue-200 bg-white p-8 shadow-xl md:p-10">
+            <p className="inline-flex rounded-full bg-blue-100 px-4 py-1 text-sm font-semibold text-blue-700">Step 1 of 3</p>
+            <h1 className="mt-5 text-4xl font-black tracking-tight md:text-5xl">Informed Consent</h1>
+            <p className="mt-4 max-w-3xl text-lg text-zinc-600">
+              Read the consent form, choose whether you agree to participate, and then continue to the participant information page.
+            </p>
 
             <div
               ref={consentScrollRef}
               onScroll={handleConsentScroll}
-              className="mt-5 max-h-72 space-y-4 overflow-y-auto rounded-2xl border border-blue-200 bg-white p-5 text-sm leading-7 text-zinc-700"
+              className="mt-8 max-h-[28rem] space-y-5 overflow-y-auto rounded-2xl border border-blue-200 bg-blue-50 p-6 text-sm leading-7 text-zinc-700"
             >
               {CONSENT_SECTIONS.map((section) => (
                 <div key={section.title} className="space-y-2">
-                  <h3 className="text-base font-bold text-zinc-900">{section.title}</h3>
+                  <h2 className="text-base font-bold text-zinc-900">{section.title}</h2>
                   {section.paragraphs?.map((paragraph) => (
                     <p key={paragraph}>{paragraph}</p>
                   ))}
@@ -1086,164 +1123,181 @@ export default function Home() {
               ))}
             </div>
 
-            <p className="mt-3 text-sm font-semibold text-zinc-600">
-              {consentReachedBottom ? "You can now sign the consent form." : "Scroll to the bottom to enable the I Agree button."}
-            </p>
-            <p className="mt-1 text-sm text-zinc-600">Selecting I Agree confirms participation and allows access to the simulation.</p>
+            <div className="mt-5 rounded-2xl border border-zinc-200 bg-zinc-50 p-5">
+              <p className="text-sm font-semibold uppercase tracking-wide text-zinc-500">Consent Selection</p>
+              <p className="mt-2 text-base text-zinc-700">
+                {consentReachedBottom ? "Select one option below." : "Scroll to the bottom of the consent form before selecting an option."}
+              </p>
 
-            <div className="mt-5 grid gap-4 lg:grid-cols-[1fr_auto]">
-              <label className="space-y-2">
-                <span className="text-sm font-semibold uppercase tracking-wide text-zinc-600">Typed Signature</span>
-                <input
-                  type="text"
-                  value={consentSignature}
-                  onChange={(event) => setConsentSignature(event.target.value)}
-                  disabled={consentAccepted}
-                  placeholder="Type full name to sign"
-                  className="w-full rounded-xl border border-zinc-300 bg-white px-4 py-3 text-lg font-semibold text-zinc-900 outline-none transition focus:ring focus:ring-blue-200 disabled:cursor-not-allowed disabled:bg-zinc-100"
+              <div className="mt-4 grid gap-3 md:grid-cols-2">
+                <ConsentChoiceCard
+                  label="I Agree"
+                  description="I have read the information above and agree to participate."
+                  selected={consentChoice === "agree"}
+                  disabled={!consentReachedBottom}
+                  onClick={() => selectConsentChoice("agree")}
                 />
-              </label>
+                <ConsentChoiceCard
+                  label="I Do Not Agree"
+                  description="I do not agree to participate in this study."
+                  selected={consentChoice === "disagree"}
+                  disabled={!consentReachedBottom}
+                  onClick={() => selectConsentChoice("disagree")}
+                />
+              </div>
 
-              <button
-                onClick={signConsent}
-                disabled={consentAccepted || !consentReachedBottom || !consentSignature.trim()}
-                className="self-end rounded-2xl bg-blue-600 px-8 py-4 text-lg font-bold text-white transition hover:bg-blue-500 disabled:cursor-not-allowed disabled:bg-blue-300"
-              >
-                {consentAccepted ? "Consent Signed" : "I Agree"}
+              {consentError && <p className="mt-4 text-sm font-semibold text-rose-700">{consentError}</p>}
+            </div>
+
+            <div className="mt-8 flex flex-wrap gap-3">
+              <button onClick={toHome} className="rounded-2xl bg-zinc-800 px-6 py-4 text-lg font-bold text-white hover:bg-zinc-700">
+                Back
+              </button>
+              <button onClick={continueFromConsent} className="rounded-2xl bg-blue-600 px-6 py-4 text-lg font-bold text-white hover:bg-blue-500">
+                Next
               </button>
             </div>
-
-            {consentError && <p className="mt-3 text-sm font-semibold text-rose-700">{consentError}</p>}
           </div>
+        </div>
+      </main>
+    );
+  }
 
-          <div className={`mt-8 rounded-2xl border p-6 ${consentAccepted ? "border-zinc-200 bg-zinc-50" : "border-zinc-200 bg-zinc-100/80"}`}>
-            <div className="flex flex-wrap items-start justify-between gap-3">
-              <div>
-                <h2 className="text-2xl font-bold text-zinc-900">Participant Information</h2>
-                <p className="mt-2 text-base text-zinc-600">The participant ID is assigned automatically and shown in the top-left corner.</p>
-              </div>
-              {!consentAccepted && (
-                <span className="rounded-full bg-amber-100 px-4 py-2 text-sm font-bold text-amber-800">Consent Required First</span>
-              )}
-            </div>
+  if (screen === "demographics") {
+    return (
+      <main className="min-h-screen bg-gradient-to-b from-zinc-50 to-zinc-100 px-6 py-10 text-zinc-900">
+        <div className="mx-auto max-w-6xl">
+          <ParticipantIdTab participantId={participantIdForSession} />
+          <div className="rounded-3xl border border-zinc-200 bg-white p-8 shadow-xl md:p-10">
+            <p className="inline-flex rounded-full bg-blue-100 px-4 py-1 text-sm font-semibold text-blue-700">Step 2 of 3</p>
+            <h1 className="mt-5 text-4xl font-black tracking-tight md:text-5xl">Participant Information</h1>
+            <p className="mt-4 max-w-3xl text-lg text-zinc-600">
+              Complete the participant information below before moving to the practice run.
+            </p>
 
-            <div className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-              <label className="space-y-2">
-                <span className="text-sm font-semibold uppercase tracking-wide text-zinc-600">Age</span>
-                <input
-                  type="number"
-                  min="16"
-                  max="100"
-                  step="1"
-                  inputMode="numeric"
-                  value={participant.age}
-                  onChange={(event) => updateParticipantField("age", event.target.value)}
-                  placeholder="e.g. 24"
-                  disabled={!consentAccepted}
-                  aria-invalid={Boolean(participantErrors.age)}
-                  className={
-                    "w-full rounded-xl border bg-white px-4 py-3 text-lg font-semibold text-zinc-900 outline-none transition focus:ring disabled:cursor-not-allowed disabled:bg-zinc-100 " +
-                    (participantErrors.age ? "border-rose-500 ring-rose-200" : "border-zinc-300 ring-blue-200")
-                  }
-                />
-                {participantErrors.age && <p className="text-sm font-semibold text-rose-700">{participantErrors.age}</p>}
-              </label>
-
-              <label className="space-y-2">
-                <span className="text-sm font-semibold uppercase tracking-wide text-zinc-600">Gender</span>
-                <select
-                  value={participant.gender}
-                  onChange={(event) => updateParticipantField("gender", event.target.value)}
-                  disabled={!consentAccepted}
-                  aria-invalid={Boolean(participantErrors.gender)}
-                  className={
-                    "w-full rounded-xl border bg-white px-4 py-3 text-lg font-semibold text-zinc-900 outline-none transition focus:ring disabled:cursor-not-allowed disabled:bg-zinc-100 " +
-                    (participantErrors.gender ? "border-rose-500 ring-rose-200" : "border-zinc-300 ring-blue-200")
-                  }
-                >
-                  <option value="">Select an option</option>
-                  {GENDER_OPTIONS.map((option) => (
-                    <option key={option} value={option}>
-                      {option}
-                    </option>
-                  ))}
-                </select>
-                {participantErrors.gender && <p className="text-sm font-semibold text-rose-700">{participantErrors.gender}</p>}
-              </label>
-
-              <label className="space-y-2">
-                <span className="text-sm font-semibold uppercase tracking-wide text-zinc-600">Level of Nursing</span>
-                <select
-                  value={participant.levelOfNursing}
-                  onChange={(event) => updateParticipantField("levelOfNursing", event.target.value)}
-                  disabled={!consentAccepted}
-                  aria-invalid={Boolean(participantErrors.levelOfNursing)}
-                  className={
-                    "w-full rounded-xl border bg-white px-4 py-3 text-lg font-semibold text-zinc-900 outline-none transition focus:ring disabled:cursor-not-allowed disabled:bg-zinc-100 " +
-                    (participantErrors.levelOfNursing ? "border-rose-500 ring-rose-200" : "border-zinc-300 ring-blue-200")
-                  }
-                >
-                  <option value="">Select an option</option>
-                  {NURSING_LEVEL_OPTIONS.map((option) => (
-                    <option key={option} value={option}>
-                      {option}
-                    </option>
-                  ))}
-                </select>
-                {participantErrors.levelOfNursing && <p className="text-sm font-semibold text-rose-700">{participantErrors.levelOfNursing}</p>}
-              </label>
-
-              <label className="space-y-2">
-                <span className="text-sm font-semibold uppercase tracking-wide text-zinc-600">Area of Nursing</span>
-                <input
-                  type="text"
-                  value={participant.areaOfNursing}
-                  onChange={(event) => updateParticipantField("areaOfNursing", event.target.value)}
-                  placeholder="e.g. ICU, Med Surg"
-                  disabled={!consentAccepted}
-                  aria-invalid={Boolean(participantErrors.areaOfNursing)}
-                  className={
-                    "w-full rounded-xl border bg-white px-4 py-3 text-lg font-semibold text-zinc-900 outline-none transition focus:ring disabled:cursor-not-allowed disabled:bg-zinc-100 " +
-                    (participantErrors.areaOfNursing ? "border-rose-500 ring-rose-200" : "border-zinc-300 ring-blue-200")
-                  }
-                />
-                {participantErrors.areaOfNursing && <p className="text-sm font-semibold text-rose-700">{participantErrors.areaOfNursing}</p>}
-              </label>
-
-              <label className="space-y-2">
-                <span className="text-sm font-semibold uppercase tracking-wide text-zinc-600">Years of Nursing Experience</span>
-                <input
-                  type="number"
-                  min="0"
-                  max="80"
-                  step="0.5"
-                  inputMode="decimal"
-                  value={participant.yearsOfNursingExperience}
-                  onChange={(event) => updateParticipantField("yearsOfNursingExperience", event.target.value)}
-                  placeholder="e.g. 2.5"
-                  disabled={!consentAccepted}
-                  aria-invalid={Boolean(participantErrors.yearsOfNursingExperience)}
-                  className={
-                    "w-full rounded-xl border bg-white px-4 py-3 text-lg font-semibold text-zinc-900 outline-none transition focus:ring disabled:cursor-not-allowed disabled:bg-zinc-100 " +
-                    (participantErrors.yearsOfNursingExperience ? "border-rose-500 ring-rose-200" : "border-zinc-300 ring-blue-200")
-                  }
-                />
-                {participantErrors.yearsOfNursingExperience && (
-                  <p className="text-sm font-semibold text-rose-700">{participantErrors.yearsOfNursingExperience}</p>
+            <div className="mt-8 rounded-2xl border border-zinc-200 bg-zinc-50 p-6">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <h2 className="text-2xl font-bold text-zinc-900">Demographics Survey</h2>
+                  <p className="mt-2 text-base text-zinc-600">The participant ID is assigned automatically and shown in the top-right corner.</p>
+                </div>
+                {consentAcceptedAt && (
+                  <span className="rounded-full bg-emerald-100 px-4 py-2 text-sm font-bold text-emerald-800">Agreed {consentAcceptedAt}</span>
                 )}
-              </label>
+              </div>
+
+              <div className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+                <label className="space-y-2">
+                  <span className="text-sm font-semibold uppercase tracking-wide text-zinc-600">Age</span>
+                  <input
+                    type="number"
+                    min="16"
+                    max="100"
+                    step="1"
+                    inputMode="numeric"
+                    value={participant.age}
+                    onChange={(event) => updateParticipantField("age", event.target.value)}
+                    placeholder="e.g. 24"
+                    aria-invalid={Boolean(participantErrors.age)}
+                    className={
+                      "w-full rounded-xl border bg-white px-4 py-3 text-lg font-semibold text-zinc-900 outline-none transition focus:ring " +
+                      (participantErrors.age ? "border-rose-500 ring-rose-200" : "border-zinc-300 ring-blue-200")
+                    }
+                  />
+                  {participantErrors.age && <p className="text-sm font-semibold text-rose-700">{participantErrors.age}</p>}
+                </label>
+
+                <label className="space-y-2">
+                  <span className="text-sm font-semibold uppercase tracking-wide text-zinc-600">Gender</span>
+                  <select
+                    value={participant.gender}
+                    onChange={(event) => updateParticipantField("gender", event.target.value)}
+                    aria-invalid={Boolean(participantErrors.gender)}
+                    className={
+                      "w-full rounded-xl border bg-white px-4 py-3 text-lg font-semibold text-zinc-900 outline-none transition focus:ring " +
+                      (participantErrors.gender ? "border-rose-500 ring-rose-200" : "border-zinc-300 ring-blue-200")
+                    }
+                  >
+                    <option value="">Select an option</option>
+                    {GENDER_OPTIONS.map((option) => (
+                      <option key={option} value={option}>
+                        {option}
+                      </option>
+                    ))}
+                  </select>
+                  {participantErrors.gender && <p className="text-sm font-semibold text-rose-700">{participantErrors.gender}</p>}
+                </label>
+
+                <label className="space-y-2">
+                  <span className="text-sm font-semibold uppercase tracking-wide text-zinc-600">Level of Nursing</span>
+                  <select
+                    value={participant.levelOfNursing}
+                    onChange={(event) => updateParticipantField("levelOfNursing", event.target.value)}
+                    aria-invalid={Boolean(participantErrors.levelOfNursing)}
+                    className={
+                      "w-full rounded-xl border bg-white px-4 py-3 text-lg font-semibold text-zinc-900 outline-none transition focus:ring " +
+                      (participantErrors.levelOfNursing ? "border-rose-500 ring-rose-200" : "border-zinc-300 ring-blue-200")
+                    }
+                  >
+                    <option value="">Select an option</option>
+                    {NURSING_LEVEL_OPTIONS.map((option) => (
+                      <option key={option} value={option}>
+                        {option}
+                      </option>
+                    ))}
+                  </select>
+                  {participantErrors.levelOfNursing && <p className="text-sm font-semibold text-rose-700">{participantErrors.levelOfNursing}</p>}
+                </label>
+
+                <label className="space-y-2">
+                  <span className="text-sm font-semibold uppercase tracking-wide text-zinc-600">Area of Nursing</span>
+                  <input
+                    type="text"
+                    value={participant.areaOfNursing}
+                    onChange={(event) => updateParticipantField("areaOfNursing", event.target.value)}
+                    placeholder="e.g. ICU, Med Surg"
+                    aria-invalid={Boolean(participantErrors.areaOfNursing)}
+                    className={
+                      "w-full rounded-xl border bg-white px-4 py-3 text-lg font-semibold text-zinc-900 outline-none transition focus:ring " +
+                      (participantErrors.areaOfNursing ? "border-rose-500 ring-rose-200" : "border-zinc-300 ring-blue-200")
+                    }
+                  />
+                  {participantErrors.areaOfNursing && <p className="text-sm font-semibold text-rose-700">{participantErrors.areaOfNursing}</p>}
+                </label>
+
+                <label className="space-y-2">
+                  <span className="text-sm font-semibold uppercase tracking-wide text-zinc-600">Years of Nursing Experience</span>
+                  <input
+                    type="number"
+                    min="0"
+                    max="80"
+                    step="0.5"
+                    inputMode="decimal"
+                    value={participant.yearsOfNursingExperience}
+                    onChange={(event) => updateParticipantField("yearsOfNursingExperience", event.target.value)}
+                    placeholder="e.g. 2.5"
+                    aria-invalid={Boolean(participantErrors.yearsOfNursingExperience)}
+                    className={
+                      "w-full rounded-xl border bg-white px-4 py-3 text-lg font-semibold text-zinc-900 outline-none transition focus:ring " +
+                      (participantErrors.yearsOfNursingExperience ? "border-rose-500 ring-rose-200" : "border-zinc-300 ring-blue-200")
+                    }
+                  />
+                  {participantErrors.yearsOfNursingExperience && (
+                    <p className="text-sm font-semibold text-rose-700">{participantErrors.yearsOfNursingExperience}</p>
+                  )}
+                </label>
+              </div>
+            </div>
+
+            <div className="mt-8 flex flex-wrap gap-3">
+              <button onClick={() => setScreen("consent")} className="rounded-2xl bg-zinc-800 px-6 py-4 text-lg font-bold text-white hover:bg-zinc-700">
+                Back
+              </button>
+              <button onClick={openPracticeRun} className="rounded-2xl bg-blue-600 px-6 py-4 text-lg font-bold text-white hover:bg-blue-500">
+                Continue to Practice Run
+              </button>
             </div>
           </div>
-
-          {!consentAccepted && <p className="mt-4 text-sm font-semibold text-amber-700">Consent must be signed before the demographic survey can be completed.</p>}
-
-          <button
-            onClick={openPracticeRun}
-            disabled={!consentAccepted}
-            className="mt-10 rounded-2xl bg-blue-600 px-8 py-5 text-xl font-bold text-white shadow-lg transition hover:bg-blue-500 disabled:cursor-not-allowed disabled:bg-blue-300"
-          >
-            Continue to Practice Run
-          </button>
         </div>
       </main>
     );
@@ -1252,13 +1306,14 @@ export default function Home() {
   if (screen === "done") {
     return (
       <main className="grid min-h-screen place-items-center bg-gradient-to-b from-emerald-50 to-zinc-100 p-6 md:p-10">
-        <ParticipantIdBadge participantId={participantIdForSession} />
-        <div className="w-full max-w-6xl rounded-3xl border border-emerald-200 bg-white p-6 shadow-xl md:p-10">
-          <h1 className="text-4xl font-black text-zinc-900">Simulation Complete</h1>
-          <p className="mt-3 text-lg text-zinc-600">
-            Participant ID: <span className="font-semibold text-zinc-900">{displayParticipantValue(participant.participantId)}</span>
-          </p>
-          <p className="mt-1 text-zinc-600">You can download the collected data below and open it directly in Excel.</p>
+        <div className="w-full max-w-6xl">
+          <ParticipantIdTab participantId={participantIdForSession} />
+          <div className="rounded-3xl border border-emerald-200 bg-white p-6 shadow-xl md:p-10">
+            <h1 className="text-4xl font-black text-zinc-900">Simulation Complete</h1>
+            <p className="mt-3 text-lg text-zinc-600">
+              Participant ID: <span className="font-semibold text-zinc-900">{displayParticipantValue(participant.participantId)}</span>
+            </p>
+            <p className="mt-1 text-zinc-600">You can download the collected data below and open it directly in Excel.</p>
 
           <div className="mt-6 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
             <SummaryCard label="Participant ID" value={displayParticipantValue(participant.participantId)} />
@@ -1302,17 +1357,18 @@ export default function Home() {
             </table>
           </div>
 
-          <div className="mt-6 flex flex-wrap gap-3">
-            <button
-              onClick={downloadCsv}
-              disabled={!exportRows.length}
-              className="rounded-2xl bg-blue-600 px-6 py-4 text-base font-bold text-white hover:bg-blue-500 disabled:opacity-40"
-            >
-              Download CSV for Excel
-            </button>
-            <button onClick={toHome} className="rounded-2xl bg-zinc-900 px-6 py-4 text-base font-bold text-white hover:bg-zinc-700">
-              Back to Home
-            </button>
+            <div className="mt-6 flex flex-wrap gap-3">
+              <button
+                onClick={downloadCsv}
+                disabled={!exportRows.length}
+                className="rounded-2xl bg-blue-600 px-6 py-4 text-base font-bold text-white hover:bg-blue-500 disabled:opacity-40"
+              >
+                Download CSV for Excel
+              </button>
+              <button onClick={toHome} className="rounded-2xl bg-zinc-900 px-6 py-4 text-base font-bold text-white hover:bg-zinc-700">
+                Back to Home
+              </button>
+            </div>
           </div>
         </div>
       </main>
@@ -1323,7 +1379,9 @@ export default function Home() {
 
   return (
     <main className={`${isPractice ? "bg-gradient-to-b from-amber-50 to-zinc-100" : "bg-zinc-100"} min-h-screen px-4 py-4 text-zinc-900`}>
-      <ParticipantIdBadge participantId={participantIdForSession} />
+      <div className="mx-auto max-w-[1580px]">
+        <ParticipantIdTab participantId={participantIdForSession} />
+      </div>
       <div className="mx-auto grid max-w-[1580px] gap-4 xl:grid-cols-[1fr_560px]">
         <section className={`rounded-3xl border bg-white p-6 shadow-xl md:p-8 ${isPractice ? "border-amber-200" : "border-zinc-200"}`}>
           <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
@@ -1390,13 +1448,13 @@ export default function Home() {
             )}
             <button
               onClick={() => {
-                if (isPractice || index === 0) backToIntake();
+                if (isPractice || index === 0) backToDemographics();
                 else setIndex((value) => value - 1);
                 setShowRef(false);
               }}
               className="rounded-2xl bg-zinc-800 px-6 py-4 text-lg font-bold text-white hover:bg-zinc-700"
             >
-              {isPractice || index === 0 ? "Back to Participant Info" : "Back"}
+              {isPractice || index === 0 ? "Back to Participant Information" : "Back"}
             </button>
             {isPractice ? (
               <button onClick={startActualSimulation} className="rounded-2xl bg-blue-600 px-6 py-4 text-lg font-bold text-white hover:bg-blue-500">
@@ -1457,12 +1515,56 @@ export default function Home() {
   );
 }
 
-function ParticipantIdBadge({ participantId }: { participantId: string }) {
+function ParticipantIdTab({ participantId }: { participantId: string }) {
+  if (!participantId) return null;
+
   return (
-    <div className="fixed left-4 top-4 z-40 rounded-2xl border border-blue-200 bg-white/95 px-4 py-3 shadow-lg backdrop-blur">
-      <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Participant ID</p>
-      <p className="text-lg font-black text-zinc-900">{participantId}</p>
+    <div className="mb-4 flex justify-end">
+      <div className="rounded-b-2xl rounded-t-md border border-blue-200 bg-white px-4 py-3 shadow-sm">
+        <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Participant ID</p>
+        <p className="text-lg font-black text-zinc-900">{participantId}</p>
+      </div>
     </div>
+  );
+}
+
+function ConsentChoiceCard({
+  label,
+  description,
+  selected,
+  disabled,
+  onClick,
+}: {
+  label: string;
+  description: string;
+  selected: boolean;
+  disabled: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      className={
+        "flex items-start gap-4 rounded-2xl border px-5 py-4 text-left transition " +
+        (selected ? "border-blue-500 bg-blue-50" : "border-zinc-200 bg-white") +
+        (disabled ? " cursor-not-allowed opacity-50" : " hover:border-blue-300 hover:bg-blue-50/60")
+      }
+    >
+      <span
+        className={
+          "mt-1 grid h-6 w-6 shrink-0 place-items-center rounded-md border text-sm font-bold " +
+          (selected ? "border-blue-600 bg-blue-600 text-white" : "border-zinc-300 bg-white text-transparent")
+        }
+      >
+        ✓
+      </span>
+      <span>
+        <span className="block text-base font-bold text-zinc-900">{label}</span>
+        <span className="mt-1 block text-sm text-zinc-600">{description}</span>
+      </span>
+    </button>
   );
 }
 
